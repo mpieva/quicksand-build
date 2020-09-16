@@ -1,5 +1,7 @@
 .nextflow*
-work/
+work*/
 Downloads/
 Database/
 Kraken/
+conda/
+
