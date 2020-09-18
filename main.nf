@@ -1,6 +1,7 @@
 #!/usr/bin/env nextflow
 
-params.kraken   =   ""
+params.kraken   =   "/home/merlin_szymanski/Kraken/install/"
+params.kmers    =   ["22"]
 params.outdir   =   "."
 
 
@@ -47,7 +48,7 @@ process writeFastas{
         set family, species, file(fasta) from extracted_fasta
 
     output:
-        set family, species, 'output.fasta' into written_fasta
+        set family, species, 'output.fasta' into (for_bed, for_kraken)
 
     script:
         """
@@ -60,10 +61,10 @@ process writeBedFiles{
     tag "$family:$species"
 
     input:
-        set family, species, "species.fasta" from written_fasta
+        set family, species, "species.fasta" from for_bed
 
     output:
-        set family, species, "species.masked.bed" into bedfiles
+        file "species.masked.bed"
 
     script:
         """
@@ -73,3 +74,31 @@ process writeBedFiles{
 
         """
 }
+
+for_kraken
+    .toList()
+    .set(for_kraken
+    
+
+process createKrakenDB{
+    publishDir "${params.outdir}/Kraken/${dbname}", pattern = "*.{tmp, idx, kdb, txt}"
+    publishDir "${params.outdir}/Kraken/${dbname}/taxonomy", pattern = "*.{dmp}"
+    tag "${kmer}"
+    
+    input:
+        each kmer from params.kmers
+        file fasta_list from for_kraken
+    
+    output:
+        file "*"
+    
+    script:
+        dbname = "Mito_db_kmer${kmer}"
+        """
+        ${params.kraken}/kraken-build --download-taxonomy --db ${dbname}
+        ${params.kraken}/kraken-build --add-to-library $fasta_list --db ${dbname}
+        ${params.kraken}/kraken-build --build --db ${dbname} --kmer $kmer
+        ${params.kraken}/kraken-build --clean --db ${dbname}
+        """
+}
+
