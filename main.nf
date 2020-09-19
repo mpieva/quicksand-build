@@ -2,7 +2,7 @@
 
 params.kraken   =   "/home/merlin_szymanski/Kraken/install/"
 params.kmers    =   ["22"]
-params.outdir   =   "."
+params.outdir   =   "./out"
 
 
 process downloadGenomes{
@@ -48,11 +48,11 @@ process writeFastas{
         set family, species, file(fasta) from extracted_fasta
 
     output:
-        set family, species, 'output.fasta' into (for_bed, for_kraken)
+        set family, species, file(fasta) into (for_bed, for_kraken)
 
     script:
         """
-        cat "$fasta" > 'output.fasta'
+        touch "$fasta"
         """
 }
 
@@ -77,28 +77,34 @@ process writeBedFiles{
 
 for_kraken
     .toList()
-    .set(for_kraken
+    .set{for_kraken}
     
 
 process createKrakenDB{
-    publishDir "${params.outdir}/Kraken/${dbname}", pattern = "*.{tmp, idx, kdb, txt}"
-    publishDir "${params.outdir}/Kraken/${dbname}/taxonomy", pattern = "*.{dmp}"
-    tag "${kmer}"
+    conda "$baseDir/envs/environment.yml"
+    publishDir "${params.outdir}/Kraken/${dbname}", pattern: "*.{tmp, idx, kdb, txt}"
+    publishDir "${params.outdir}/Kraken/${dbname}/taxonomy", pattern: "*.{dmp}"
+    tag "THIS TAKES A LONG TIME"
     
     input:
         each kmer from params.kmers
         file fasta_list from for_kraken
     
     output:
-        file "*"
+        file "${dbname}/taxonomy/*.dmp"
+	file "${dbname}/*.{tmp, idx, kdb, txt}"
     
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
         ${params.kraken}/kraken-build --download-taxonomy --db ${dbname}
-        ${params.kraken}/kraken-build --add-to-library $fasta_list --db ${dbname}
+	for fasta in $fasta_list; \
+		do file=\$(cut -f3 -d',' \$fasta);\
+		${params.kraken}/kraken-build --add-to-library \${file%?} --db ${dbname};\
+		done
         ${params.kraken}/kraken-build --build --db ${dbname} --kmer $kmer
         ${params.kraken}/kraken-build --clean --db ${dbname}
-        """
+        find ${dbname} -type f -exec touch {} +
+	"""
 }
 
