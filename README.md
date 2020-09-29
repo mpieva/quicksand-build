@@ -15,27 +15,55 @@ The output of the pipeline is 4 folders:
 ## DOWNLOAD ##
 
 Get the files by running 
-```git clone https://www.github.com/MerlinSzymanski/datastructure_nf```
+
+``` git clone https://www.github.com/MerlinSzymanski/datastructure_nf ```
+
+and change into the directory  
+
+``` cd datastructure_nf ```
+
+
+## Install Nextflow ##
+
+create an environment containing nextflow with
+```
+conda env create -f envs/base.yml
+```
 
 ## USAGE: ##
 
-Assuming you have nextflow and conda installed run
+To create the datastructure above, run
 
-```nextflow run main.nf --outdir ABSOLUTE_PATH```
+``` 
+conda activate nextflow
+nextflow run path/to/main.nf --outdir PATH [--kraken PATH] 
+```
 
-required:
-    --outdir  PATH:   absolute path to the save-dir. e.g. "/mnt/scratch/.../out"
+**Arguments:**
+```    
+       --outdir  PATH:   REQUIRED: path to the (to be created) save-dir, e.g. "out"
+    
+       --kraken  PATH:   OPTIONAL: path to your kraken installation folder.
+                         default: '/home/merlin_szymanski/Kraken/install'
+```
 
-optional (if you are at the MPI EVA):
-    --kraken  PATH:   path to your kraken installation folder.
-                      default: '/home/merlin_szymanski/Kraken/install'
+**Additional:**
 
-    --kmers   ARRAY:  Array of kmers for which databases should be created (this is not tested) 
-                      default: '["22"]'
+    additional settings can be set in the nextflow.config file.
+    
+    params.kmers:    Array of kmers for which databases will be created. Add more
+                     kmers to create more preindexed kraken databases
+                     Default: params.kmers = ["22"]
 
-Now you can run the sediment pipline with the following tags:
-    --genome ABSOLUTE_PATH/genomes
-    --bedfiles ABSOLUTE_PATH/masked
-    --db ABSOLUTE_PATH/kraken/Mito_db_kmer22
+## Sediment_nf ##
 
+One can now integrate the databases in the sediment_nf pipline using the following tags:
+```
+    --genome OUTDIR/genomes
+    --bedfiles OUTDIR/masked
+    --db OUTDIR/kraken/Mito_db_kmerKMER
+```
+
+## Questions? ##
+Feel free to contact me
 
