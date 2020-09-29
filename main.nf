@@ -1,7 +1,6 @@
 #!/usr/bin/env nextflow
 
 params.kraken   =   "/home/merlin_szymanski/Kraken/install/"
-params.kmers    =   ["22"]
 params.outdir   =   false
 
 def helpMessage(){
@@ -18,17 +17,16 @@ def helpMessage(){
     4. kraken:   For the given kmers the kraken databases
     
     USAGE:
-    nextflow run path/to/main.nf --outdir ABSOLUTE_PATH
+    nextflow run path/to/main.nf --outdir PATH
 
     required:
-        --outdir  PATH:   absolute path to the save-dir. e.g. "/mnt/scratch/.../out"
+        --outdir  PATH:   path to the save-dir. e.g. "/mnt/scratch/.../out"
 
     optional:
         --kraken  PATH:   path to your kraken installation folder.
                           default: '/home/merlin_szymanski/Kraken/install'
         
-        --kmers   ARRAY:  Array of kmers for which databases should be created (this is not tested) 
-                          default: '["22"]'
+        --kmers   ARRAY:  please change that in the nextflow.config file
     """.stripIndent()
 }
 if(params.outdir == false){
@@ -38,6 +36,7 @@ if(params.outdir == false){
 
 
 process downloadGenomes{
+    cache false
     publishDir "${params.outdir}/ncbi", mode: 'link'
     tag "Downloading..."
 
@@ -52,6 +51,7 @@ process downloadGenomes{
 }
 
 process extractFamilies{
+    cache false
     conda "$baseDir/envs/environment.yml"
     tag "Extracting..."
 
@@ -73,6 +73,7 @@ extracted_fasta
 
 
 process writeFastas{
+    cache false
     publishDir "${params.outdir}/genomes/${family}/", saveAs: {"${species}.fasta"}, pattern: "*.fasta", mode:'link'
 
     tag "$family:$species"
@@ -90,6 +91,7 @@ process writeFastas{
 }
 
 process indexFasta{
+    cache false
     publishDir "${params.outdir}/genomes/${family}/", mode: 'link'
     tag "$family:$species"
     
@@ -97,7 +99,7 @@ process indexFasta{
         set family, species, "${species}.fasta" from for_bwa
 
     output:
-	file "${species}.fasta.*"
+    file "${species}.fasta.*"
    
     script:
         """
@@ -106,6 +108,7 @@ process indexFasta{
 }
 
 process writeBedFiles{
+    cache false
     publishDir "${params.outdir}/masked/", saveAs: {"${species}.masked.bed"}, mode:'link'
     tag "$family:$species"
 
@@ -129,8 +132,9 @@ for_kraken
     
 
 process createKrakenDB{
+    cache false
     conda "$baseDir/envs/environment.yml"
-    tag "THIS TAKES A LONG TIME"
+    tag "Wait ~ 30min."
     
     input:
         each kmer from params.kmers
@@ -142,19 +146,23 @@ process createKrakenDB{
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
+        if [[ "${params.outdir}" = /* ]]; \
+            then out="${params.outdir}";\
+            else out="${launchDir}/${params.outdir}";\
+        fi;
         ${params.kraken}/kraken-build --download-taxonomy --db ${dbname}
-	for fasta in $fasta_list; \
-		do file=\$(cut -f3 -d',' \$fasta);\
-		${params.kraken}/kraken-build --add-to-library \${file%?} --db ${dbname};\
-		done
-        ${params.kraken}/kraken-build --build --db ${dbname} --kmer $kmer
-        ${params.kraken}/kraken-build --clean --db ${dbname}
-	if [[ -d ${params.outdir}/kraken ]];\
-		then rm -fr ${params.outdir}/kraken;\
-		fi;
-	mkdir ${params.outdir}/kraken
-	cp -r ${dbname} ${params.outdir}/kraken
-	touch "output.txt"
-	"""
+        for fasta in $fasta_list; \
+            do file=\$(cut -f3 -d',' \$fasta);\
+            ${params.kraken}/kraken-build --add-to-library \${file%?} --db ${dbname};\
+            done
+            ${params.kraken}/kraken-build --build --db ${dbname} --kmer $kmer
+            ${params.kraken}/kraken-build --clean --db ${dbname}
+        if [[ -d \$out/kraken ]];\
+            then rm -fr \$out/kraken;\
+            fi;
+        mkdir \$out/kraken
+        cp -r ${dbname} \$out/kraken
+        touch "output.txt"
+        """
 }
 
