@@ -36,7 +36,6 @@ if(params.outdir == false){
 
 
 process downloadGenomes{
-    cache false
     publishDir "${params.outdir}/ncbi", mode: 'link'
     tag "Downloading..."
 
@@ -46,12 +45,10 @@ process downloadGenomes{
     script:
         """
         rsync -av rsync://ftp.ncbi.nlm.nih.gov/refseq/release/mitochondrion/*.genomic.gbff.gz .
-
         """
 }
 
 process extractFamilies{
-    cache false
     conda "$baseDir/envs/environment.yml"
     tag "Extracting..."
 
@@ -60,6 +57,7 @@ process extractFamilies{
 
     output:
         file "*.fasta" into extracted_fasta mode flatten
+        file "*.tsv" into convert_acc
 
     script:
         """
@@ -68,22 +66,21 @@ process extractFamilies{
 }
 
 extracted_fasta
-    .map{[it.baseName.split("_")[0], it.baseName.split("_")[1..-1].join("_"), file(it)]}
+    .map{[it.baseName.split("_")[0],it.baseName.split('_')[1..2].join("_"), it.baseName.split("_")[3..-1].join("_"), file(it)]}
     .set{extracted_fasta}
 
 
 process writeFastas{
-    cache false
+    conda "$baseDir/envs/environment.yml"
     publishDir "${params.outdir}/genomes/${family}/", saveAs: {"${species}.fasta"}, pattern: "*.fasta", mode:'link'
-
-    tag "$family:$species"
+    tag "Writing $family:$species"
     
     input:
-        set family, species, "input.fasta" from extracted_fasta
+        set family, accession, species, "input.fasta" from extracted_fasta
 
     output:
         set family, species, "output.fasta" into (for_bed, for_bwa, for_kraken)
-
+    
     script:
         """
         cat input.fasta > output.fasta
@@ -91,7 +88,6 @@ process writeFastas{
 }
 
 process indexFasta{
-    cache false
     publishDir "${params.outdir}/genomes/${family}/", mode: 'link'
     tag "$family:$species"
     
@@ -99,7 +95,7 @@ process indexFasta{
         set family, species, "${species}.fasta" from for_bwa
 
     output:
-    file "${species}.fasta.*"
+        file "${species}.fasta.*"
    
     script:
         """
@@ -108,7 +104,6 @@ process indexFasta{
 }
 
 process writeBedFiles{
-    cache false
     publishDir "${params.outdir}/masked/", saveAs: {"${species}.masked.bed"}, mode:'link'
     tag "$family:$species"
 
@@ -132,16 +127,16 @@ for_kraken
     
 
 process createKrakenDB{
-    cache false
     conda "$baseDir/envs/environment.yml"
-    tag "Wait ~ 30min."
+    tag "Wait! This takes > 30min."
+    publishDir("stats")
     
     input:
         each kmer from params.kmers
         file fasta_list from for_kraken
     
     output:
-        file "output.txt" into log
+        file "nucl_gb.accession2taxid" into taxid_map
     
     script:
         dbname = "Mito_db_kmer${kmer}"
@@ -156,13 +151,27 @@ process createKrakenDB{
             ${params.kraken}/kraken-build --add-to-library \${file%?} --db ${dbname};\
             done
             ${params.kraken}/kraken-build --build --db ${dbname} --kmer $kmer
-            ${params.kraken}/kraken-build --clean --db ${dbname}
+        mv $dbname/taxonomy/nucl_gb.accession2taxid .
         if [[ -d \$out/kraken ]];\
             then rm -fr \$out/kraken;\
             fi;
         mkdir \$out/kraken
-        cp -r ${dbname} \$out/kraken
-        touch "output.txt"
+        mv ${dbname} \$out/kraken/
+        """
+}
+process createFileMap{
+    publishDir "${params.outdir}/genomes", mode:'link'
+    
+    input:
+        file "acc_map.tsv" from convert_acc
+        file "nucl_gb.accession2taxid" from taxid_map
+
+    output:
+        file "*.tsv" 
+
+    script:
+        """ 
+        python3 $baseDir/bin/convert_acc_to_taxid.py acc_map.tsv nucl_gb.accession2taxid
         """
 }
 
