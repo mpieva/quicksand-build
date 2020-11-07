@@ -136,7 +136,7 @@ process createKrakenDB{
         file fasta_list from for_kraken
     
     output:
-        file "nucl_gb.accession2taxid" into taxid_map
+        set "nucl_gb.accession2taxid", "names_dict.json" into taxid_map
     
     script:
         dbname = "Mito_db_kmer${kmer}"
@@ -152,6 +152,7 @@ process createKrakenDB{
             done
             ${params.kraken}/kraken-build --build --db ${dbname} --kmer $kmer
         mv $dbname/taxonomy/nucl_gb.accession2taxid .
+        python3 $baseDir/bin/parse_names.py $dbname/taxonomy/names.dmp
         if [[ -d \$out/kraken ]];\
             then rm -fr \$out/kraken;\
             fi;
@@ -164,14 +165,14 @@ process createFileMap{
     
     input:
         file "acc_map.tsv" from convert_acc
-        file "nucl_gb.accession2taxid" from taxid_map
+        set "nucl_gb.accession2taxid", "names_dict.json" from taxid_map
 
     output:
         file "*.tsv" 
 
     script:
         """ 
-        python3 $baseDir/bin/convert_acc_to_taxid.py acc_map.tsv nucl_gb.accession2taxid
+        python3 $baseDir/bin/convert_acc_to_taxid.py acc_map.tsv nucl_gb.accession2taxid names_dict.json
         """
 }
 
