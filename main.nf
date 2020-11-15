@@ -129,7 +129,6 @@ for_kraken
 process createKrakenDB{
     conda "$baseDir/envs/environment.yml"
     tag "Wait! This takes > 30min."
-    publishDir("stats")
     
     input:
         each kmer from params.kmers
