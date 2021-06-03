@@ -1,42 +1,27 @@
 #!/usr/bin/env nextflow
 
-params.kraken   =   "/home/merlin_szymanski/Kraken/install/"
-params.outdir   =   false
+//
+//
+// Help
+//
+//
 
-def helpMessage(){
-    log.info"""
-    DATASTRUCTURE PIPELINE
-
-    Download all mammalian mitochondiral genomes from the current NCBI/Refseq
-    release and create the datastructure required by the sediment_nf pipeline.
-    Creates 4 folders:
-    
-    1. ncbi:     raw Downloaded files from NCBI
-    2. genomes:  Fasta files grouped by Family
-    3. masked:   For all fasta files in 'genomes' a masked bed file
-    4. kraken:   For the given kmers the kraken databases
-    
-    USAGE:
-    nextflow run path/to/main.nf --outdir PATH
-
-    required:
-        --outdir  PATH:   path to the save-dir. e.g. "/mnt/scratch/.../out"
-
-    optional:
-        --kraken  PATH:   path to your kraken installation folder.
-                          default: '/home/merlin_szymanski/Kraken/install'
-        
-        --kmers   ARRAY:  please change that in the nextflow.config file
-    """.stripIndent()
-}
-if(params.outdir == false){
-    helpMessage()
+params.help = false
+if (params.help || params.outdir == false ) {
+    print file("$baseDir/assets/help.txt").text
     exit 0
 }
 
 
+//
+//
+// The Pipeline
+//
+//
+
+
 process downloadGenomes{
-    publishDir "${params.outdir}/ncbi", mode: 'link'
+    publishDir "${params.outdir}/ncbi", mode: 'copy'
     tag "Downloading..."
 
     output:
@@ -49,7 +34,6 @@ process downloadGenomes{
 }
 
 process extractFamilies{
-    conda "$baseDir/envs/environment.yml"
     tag "Extracting..."
 
     input:
@@ -71,24 +55,23 @@ extracted_fasta
 
 
 process writeFastas{
-    conda "$baseDir/envs/environment.yml"
-    publishDir "${params.outdir}/genomes/${family}/", saveAs: {"${species}.fasta"}, pattern: "*.fasta", mode:'link'
+    publishDir "${params.outdir}/genomes/${family}/", saveAs: {"${species}.fasta"}, pattern: "*.fasta", mode:'copy'
     tag "Writing $family:$species"
     
     input:
         set family, accession, species, "input.fasta" from extracted_fasta
 
     output:
-        set family, species, "output.fasta" into (for_bed, for_bwa, for_kraken)
+        set family, species, "${species}.fasta" into (for_bed, for_bwa, for_kraken)
     
     script:
         """
-        cat input.fasta > output.fasta
+        cat input.fasta > "${species}.fasta"
         """
 }
 
 process indexFasta{
-    publishDir "${params.outdir}/genomes/${family}/", mode: 'link'
+    publishDir "${params.outdir}/genomes/${family}/", mode: 'copy'
     tag "$family:$species"
     
     input:
@@ -104,61 +87,54 @@ process indexFasta{
 }
 
 process writeBedFiles{
-    publishDir "${params.outdir}/masked/", saveAs: {"${species}.masked.bed"}, mode:'link'
+    publishDir "${params.outdir}/masked/", saveAs: {"${species}.masked.bed"}, mode:'copy'
     tag "$family:$species"
 
     input:
-        set family, species, "species.fasta" from for_bed
+        set family, species, "${species}.fasta" from for_bed
 
     output:
-        file "species.masked.bed"
+        file "${species}.masked.bed"
 
     script:
         """
-        dustmasker -in species.fasta -outfmt acclist | \
+        dustmasker -in "${species}.fasta" -outfmt acclist | \
         python3 $baseDir/bin/dustmasker_interval_to_bed.py \
-        > species.masked.bed;
+        > "${species}.masked.bed";
         """
 }
 
 for_kraken
+    .map{it[2]}
     .toList()
     .set{for_kraken}
     
 
 process createKrakenDB{
-    conda "$baseDir/envs/environment.yml"
-    tag "Wait! This takes > 30min."
-    
+    tag "This takes some time..."
+    publishDir "${params.outdir}/kraken", mode: 'copy'
+
     input:
         each kmer from params.kmers
-        file fasta_list from for_kraken
+        file "*.fasta" from for_kraken
     
     output:
+        file "Mito_db_kmer${kmer}"
         set "nucl_gb.accession2taxid", "names_dict.json" into taxid_map
     
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
-        if [[ "${params.outdir}" = /* ]]; \
-            then out="${params.outdir}";\
-            else out="${launchDir}/${params.outdir}";\
-        fi;
-        ${params.kraken}/kraken-build --download-taxonomy --db ${dbname}
-        for fasta in $fasta_list; \
-            do file=\$(cut -f3 -d',' \$fasta);\
-            ${params.kraken}/kraken-build --add-to-library \${file%?} --db ${dbname};\
+        kraken-build --download-taxonomy --db ${dbname}
+        for fasta in *.fasta; do \
+            kraken-build --add-to-library \${fasta} --db ${dbname};\
             done
-            ${params.kraken}/kraken-build --build --db ${dbname} --kmer $kmer
-        mv $dbname/taxonomy/nucl_gb.accession2taxid .
+            kraken-build --build --db ${dbname} --kmer $kmer
+        cp $dbname/taxonomy/nucl_gb.accession2taxid .
         python3 $baseDir/bin/parse_names.py $dbname/taxonomy/names.dmp
-        if [[ -d \$out/kraken ]];\
-            then rm -fr \$out/kraken;\
-            fi;
-        mkdir \$out/kraken
-        mv ${dbname} \$out/kraken/
         """
 }
+
 process createFileMap{
     publishDir "${params.outdir}/genomes", mode:'link'
     

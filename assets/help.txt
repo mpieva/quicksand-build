@@ -1,0 +1,22 @@
+DATASTRUCTURE PIPELINE
+
+Download all mammalian mitochondiral genomes from the current NCBI/Refseq
+release and create the underlying datastructure required by the sediment_nf pipeline.
+The pipeline creates 4 folders:
+    
+    1. ncbi:     raw Downloaded files from NCBI
+    2. genomes:  Fasta files grouped by Family
+    3. masked:   For all fasta files in 'genomes' a bed file created by dustmasker
+    4. kraken:   For the given kmers (see nextflow.config) the corresponding kraken databases
+    
+USAGE:
+nextflow run main.nf --outdir <PATH>
+
+required:
+    --outdir  PATH:   path to the save-dir. e.g. "/mnt/scratch/.../out"
+
+optional:
+    --kraken  PATH:   path to your kraken installation folder.
+                      default: '/home/merlin_szymanski/Kraken/install'
+    
+    --kmers   ARRAY:  please change that in the nextflow.config file
