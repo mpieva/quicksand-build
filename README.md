@@ -61,7 +61,7 @@ To integrate the created datastructure in the pipeline, run the sediment_nf pipe
 Besides the **Singularity** profile the pipeline provides two additional profiles that provide an alternative way to run the pipeline - Conda and Docker
 
 ### Conda 
-**Requirements**
+**Requirements**\
 If one wants to run the pipeline in conda, make sure that (besides Nextflow) conda is installed: [Instructions](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
 Additionally one needs to install the following programs
 * rsync
@@ -77,7 +77,7 @@ nextflow run datastructure_nf/main.nf -profile conda --outdir <PATH> [ --kmers K
 ```
 
 ### Docker
-**Requirements**
+**Requirements**\
 Besides Nextflow, Docker needs to be installed: [Installation](https://docs.docker.com/get-docker/)
 
 **Usage**
