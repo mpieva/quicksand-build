@@ -11,7 +11,7 @@ if (params.help || params.outdir == false ) {
     print file("$baseDir/assets/help.txt").text
     exit 0
 }
-
+kmers = Channel.from(params.kmers.toString().split(','))
 
 //
 //
@@ -111,11 +111,11 @@ for_kraken
     
 
 process createKrakenDB{
-    tag "This takes some time..."
+    tag "Create KrakenDB: Kmer ${kmer}"
     publishDir "${params.outdir}/kraken", mode: 'copy'
 
     input:
-        each kmer from params.kmers
+        each kmer from kmers
         file "*.fasta" from for_kraken
     
     output:
