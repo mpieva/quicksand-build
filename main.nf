@@ -108,11 +108,10 @@ for_kraken
     .map{it[2]}
     .toList()
     .set{for_kraken}
-    
 
 process createKrakenDB{
     tag "Create KrakenDB: Kmer ${kmer}"
-    publishDir "${params.outdir}/kraken", mode: 'copy'
+    publishDir "${params.outdir}/kraken", mode: 'move', pattern: "Mito_db*"
 
     input:
         each kmer from kmers
@@ -135,8 +134,12 @@ process createKrakenDB{
         """
 }
 
+convert_acc.unique().set{convert_acc}
+taxid_map.unique().set{taxid_map}
+
+
 process createFileMap{
-    publishDir "${params.outdir}/genomes", mode:'link'
+    publishDir "${params.outdir}/genomes", mode:'copy'
     
     input:
         file "acc_map.tsv" from convert_acc
