@@ -134,9 +134,6 @@ process createKrakenDB{
         """
 }
 
-convert_acc.unique().set{convert_acc}
-taxid_map.unique().set{taxid_map}
-
 
 process createFileMap{
     publishDir "${params.outdir}/genomes", mode:'copy'
