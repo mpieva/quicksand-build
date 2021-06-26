@@ -1,5 +1,7 @@
-# DATASTRUCTURE PIPELINE
-This pipeline is an additional pipeline to the sediment_nf pipeline. It downloads all mammalian mitochondiral genomes from the current NCBI/RefSeq release and creates the datastructure and files required by the sediment_nf pipeline.
+# Quicksand-build
+This repostory is an addition to the mpieva/quicksand pipeline [see here](https://www.github.com/mpieva/quicksand). 
+Starting quicksand-build will downloads all mammalian mitochondiral genomes from the current NCBI/RefSeq release and 
+create the datastructure and files required by the quicksand pipeline.
 
 Make sure to check the [RefSeq Website](https://www.ncbi.nlm.nih.gov/refseq/) and note down the current RefSeq Release that is used for your database
 
@@ -14,28 +16,36 @@ Make sure to check the [RefSeq Website](https://www.ncbi.nlm.nih.gov/refseq/) an
          masked/{species}.masked.bed - Bed files for all species in the database showing low-complexity regions
     kraken:
          kraken/Mito_db_kmer{kmersize} - A preindexed Kraken-database for the given kmers containing all the species in the database
-    work: contains nextflow-specific files and can be deleted
+    work: contains nextflow-specific files and can be deleted after the run
 ```
 
 ## Requirements
 To run the pipeline the following programms need to be installed:
 1. Nextflow (tested on v.20.04.10): [Installation](https://www.nextflow.io/docs/latest/getstarted.html)
-2. Singularity (tested on v3.7.1) [Installation](https://sylabs.io/guides/3.0/user-guide/installation.html)
+2. Singularity (tested on v3.7.1): [Installation](https://sylabs.io/guides/3.0/user-guide/installation.html)
 
 **Alternatively** one can run the pipeline with conda or Docker, in that case see the section "Profiles" below
 
-## Download the code 
-You can download the pipeline by running
 
-``` git clone https://www.github.com/MerlinSzymanski/datastructure_nf ```
-
-
-## Usage:
-To run the pipeline with default parameters type
+## Quickstart:
+To run the pipeline with default parameters open the terminal and type
 
 ``` 
-nextflow run datastructure_nf/main.nf -profile singularity --outdir <PATH> [ --kmers KMERS ]
+nextflow run mpieva/quicksand-build -profile singularity --outdir <PATH> [ --kmers KMERS ]
 ```
+
+alternatively one can download the repository and start the pipeline from the local file
+
+## Or download the code 
+
+Download the repository and start the pipeline from the local files by running:
+
+``` 
+git clone https://www.github.com/mpieva/quicksand-build
+nextflow run quicksand-build/main.nf -profile singularity --outdir <PATH> [ --kmers KMERS ]
+```
+
+on the local repository.
 
 **Arguments:**
 ```    
@@ -49,8 +59,8 @@ nextflow run datastructure_nf/main.nf -profile singularity --outdir <PATH> [ --k
        -c        PATH    : Path to a nextflow.config file that provides ADDITIONAL parameters
 ```
 
-## Usage with the Sediment_nf pipeline
-To integrate the created datastructure in the pipeline, run the sediment_nf pipeline with the following parameters:
+## Link to quicksand pipeline
+To integrate the created datastructure, run the quicksand pipeline with the following parameters:
 ```
     --genome <OUTDIR>/genomes
     --bedfiles <OUTDIR>/masked
@@ -73,7 +83,7 @@ And add them to the $PATH variable
 
 **Running the pipeline**
 ``` 
-nextflow run datastructure_nf/main.nf -profile conda --outdir <PATH> [ --kmers KMERS ]
+nextflow run mpieva/quicksand-build -profile conda --outdir <PATH> [ --kmers KMERS ]
 ```
 
 ### Docker
@@ -82,5 +92,5 @@ Besides Nextflow, Docker needs to be installed: [Installation](https://docs.dock
 
 **Usage**
 ``` 
-nextflow run datastructure_nf/main.nf -profile docker --outdir <PATH> [ --kmers KMERS ]
+nextflow run mpieva/quicksand-build -profile docker --outdir <PATH> [ --kmers KMERS ]
 ```
