@@ -31,7 +31,7 @@ To run the pipeline the following programms need to be installed:
 To run the pipeline with default parameters open the terminal and type
 
 ``` 
-nextflow run mpieva/quicksand-build -profile singularity --outdir <PATH> [ --kmers KMERS ]
+nextflow run mpieva/quicksand-build --outdir <PATH> [ --kmers KMERS ]
 ```
 
 alternatively one can download the repository and start the pipeline from the local file
@@ -68,7 +68,7 @@ To integrate the created datastructure, run the quicksand pipeline with the foll
 ```
 
 ## Profiles
-Besides the **Singularity** profile the pipeline provides two additional profiles that provide an alternative way to run the pipeline - Conda and Docker
+Besides the **Default** singularity profile the pipeline provides two additional profiles that provide an alternative way to run the pipeline - Conda and Docker
 
 ### Conda 
 **Requirements**\
