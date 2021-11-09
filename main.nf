@@ -45,7 +45,7 @@ process extractFamilies{
 
     script:
         """
-        python3 $baseDir/bin/extract_families.py $genome
+        python3 $baseDir/bin/extract_families.py $baseDir/assets/orders.txt $genome
         """
 }
 
@@ -111,7 +111,7 @@ for_kraken
 
 process createKrakenDB{
     tag "Create KrakenDB: Kmer ${kmer}"
-    publishDir "${params.outdir}/kraken", mode: 'move', pattern: "Mito_db*"
+    publishDir "${params.outdir}/kraken", mode: 'copy', pattern: "Mito_db*"
 
     input:
         each kmer from kmers
