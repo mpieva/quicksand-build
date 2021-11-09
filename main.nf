@@ -111,7 +111,7 @@ for_kraken
 
 process createKrakenDB{
     tag "Create KrakenDB: Kmer ${kmer}"
-    publishDir "${params.outdir}/kraken", mode: 'move', pattern: "Mito_db*"
+    publishDir "${params.outdir}/kraken", mode: 'copy', pattern: "Mito_db*"
 
     input:
         each kmer from kmers
