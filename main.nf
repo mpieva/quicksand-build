@@ -1,5 +1,11 @@
 #!/usr/bin/env nextflow
 
+red = "\033[0;31m"
+white = "\033[0m"
+cyan = "\033[0;36m"
+yellow = "\033[0;33m"
+
+
 //
 //
 // Help
@@ -12,6 +18,10 @@ if (params.help || params.outdir == false ) {
     exit 0
 }
 kmers = Channel.from(params.kmers.toString().split(','))
+params.exclude = ''
+
+exclude = params.exclude ? Channel.fromPath("${params.exclude}", type:'file') : Channel.from('None')
+
 
 //
 //
@@ -38,14 +48,18 @@ process extractFamilies{
 
     input:
         file genome from downloaded_genomes
+        file ex from exclude
 
     output:
         file "*.fasta" into extracted_fasta mode flatten
         file "*.tsv" into convert_acc
 
     script:
+        if(! params.exclude){
+            ex = 'None'
+        }
         """
-        python3 $baseDir/bin/extract_families.py $baseDir/assets/orders.txt $genome
+        python3 $baseDir/bin/extract_families.py $baseDir/assets/orders.txt $ex $genome
         """
 }
 

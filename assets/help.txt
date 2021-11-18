@@ -14,9 +14,14 @@ nextflow run main.nf --outdir <PATH>
 
 required:
     --outdir  PATH:   path to the save-dir. e.g. "/mnt/scratch/.../out"
+                      default: '$PWD/out'
 
 optional:
     --kraken  PATH:   path to your kraken installation folder.
                       default: '/home/merlin_szymanski/Kraken/install'
     
-    --kmers   ARRAY:  please change that in the nextflow.config file
+    --kmers   STRING: A string of comma-separated kmers: 22,23,24
+                      default: 22
+
+    --exclude PATH    path to (tsv)-file with genomes to exclude from the database
+                      format: 'Family\t'Species_name,Species_name'
