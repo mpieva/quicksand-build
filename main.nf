@@ -45,7 +45,7 @@ process extractFamilies{
 
     script:
         """
-        python3 $baseDir/bin/extract_families.py $genome
+        python3 $baseDir/bin/extract_families.py $baseDir/assets/orders.txt $genome
         """
 }
 
