@@ -1,4 +1,5 @@
 from Bio import SeqIO
+import Bio
 from pathlib import Path
 from collections import defaultdict
 import gzip
@@ -33,8 +34,14 @@ for arg in sys.argv[3:]:
                 if organism in excluded_species:
                     continue
                 acc = seq_gb.id
-                print(acc,order,family,organism, sep='\t',file=acc_map_handle)
                 filename = f"{family}_{acc}_{organism}.fasta"
-                with open(filename,'w') as fasta_out:
-                    SeqIO.write(seq_gb, fasta_out, 'fasta')
+                try:
+                    with open(filename,'w') as fasta_out:
+                        SeqIO.write(seq_gb, fasta_out, 'fasta')
+                    print(acc,order,family,organism, sep='\t',file=acc_map_handle)
+                except Bio.Seq.UndefinedSequenceError:
+                    #sometimes fresh releases contain sequences without the actual letters.
+                    Path(filename).unlink() # delete the empty file 
+                    print(f'No sequence contained in {acc}', file=sys.stderr)
+                    continue
 acc_map_handle.close()
