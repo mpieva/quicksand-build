@@ -22,10 +22,10 @@ for line in [x for x in open(sys.argv[1])]:
             order_taxid = 'NA'
         fam_taxid = name_taxid_dict[fam]
         gen_taxid = name_taxid_dict[sp.split("_")[0]]
-        print(sp_taxid, order, fam, sp, sep='\t', file=handle)
-        print(gen_taxid, order, fam, sp, sep='\t', file=handle)
-        print(fam_taxid, order, fam, sp, sep='\t', file=handle)
-        print(order_taxid, order, fam, sp, sep='\t', file=handle)
+        print(sp_taxid, fam, sp, order, sep='\t', file=handle)
+        print(gen_taxid, fam, sp, order,sep='\t', file=handle)
+        print(fam_taxid, fam, sp, order, sep='\t', file=handle)
+        print(order_taxid, fam, sp, order, sep='\t', file=handle)
     except KeyError:
         #it happens that genomes get retracted by RefSeq and dont show up in the downloaded taxonomy-files of kraken anymore
         #However, the genomes are still present in the ncbi-refseq-download until the next release (and thus the name in the acc_map.tsv).
