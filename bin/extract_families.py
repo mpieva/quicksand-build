@@ -24,7 +24,10 @@ for arg in sys.argv[3:]:
     with gzip.open(arg, 'rt') as gb:
         for seq_gb in SeqIO.parse(gb, 'genbank'):
             #make sure you have a biopython version after https://github.com/biopython/biopython/issues/2844
-            family = [name for name in seq_gb.annotations['taxonomy'] if name.endswith('idae') or name.endswith('aceae')][-1]
+            try:
+                family = [name for name in seq_gb.annotations['taxonomy'] if name.endswith('idae') or name.endswith('aceae')][-1]
+            except IndexError: #other family syntaz
+                family = 'others'
             try:
                 order = seq_gb.annotations['taxonomy'][seq_gb.annotations['taxonomy'].index(family)-1]
             except: #No order assigned (Tenrecs and Moles)
