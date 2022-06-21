@@ -38,12 +38,14 @@ for arg in sys.argv[3:]:
             acc = seq_gb.id
             filename = f"{family}_{acc}_{organism}.fasta"
             try:
-                with open(filename,'w') as fasta_out:
+                # some of the bacteria names contain '/'...
+                with open(filename.replace('/','_'),'w') as fasta_out:
                     SeqIO.write(seq_gb, fasta_out, 'fasta')
-                print(acc,order,family,organism, sep='\t',file=acc_map_handle)
+                print(acc,order,family,organism.replace('/','_'), sep='\t',file=acc_map_handle)
             except Bio.Seq.UndefinedSequenceError:
                 #sometimes fresh releases contain sequences without the actual letters.
                 Path(filename).unlink() # delete the empty file 
                 print(f'No sequence contained in {acc}', file=sys.stderr)
                 continue
+
 acc_map_handle.close()
