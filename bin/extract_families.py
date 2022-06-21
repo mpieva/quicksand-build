@@ -44,7 +44,7 @@ for arg in sys.argv[3:]:
                 print(acc,order,family,organism.replace('/','_'), sep='\t',file=acc_map_handle)
             except Bio.Seq.UndefinedSequenceError:
                 #sometimes fresh releases contain sequences without the actual letters.
-                Path(filename).unlink() # delete the empty file 
+                Path(filename.replace('/','_')).unlink() # delete the empty file 
                 print(f'No sequence contained in {acc}', file=sys.stderr)
                 continue
 
