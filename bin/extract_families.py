@@ -24,24 +24,30 @@ for arg in sys.argv[3:]:
     with gzip.open(arg, 'rt') as gb:
         for seq_gb in SeqIO.parse(gb, 'genbank'):
             #make sure you have a biopython version after https://github.com/biopython/biopython/issues/2844
-            if 'Mammalia' in seq_gb.annotations['taxonomy']:
-                try:
-                    order = [name for name in seq_gb.annotations['taxonomy'] if name in orders ][-1]
-                except IndexError: #No order assigned (Tenrecs and Moles)
-                    order = 'NA'
-                family = [name for name in seq_gb.annotations['taxonomy'] if name.endswith('idae')][-1]
-                organism = seq_gb.annotations['organism'].replace(' ', '_')
-                if organism in excluded_species:
-                    continue
-                acc = seq_gb.id
-                filename = f"{family}_{acc}_{organism}.fasta"
-                try:
-                    with open(filename,'w') as fasta_out:
-                        SeqIO.write(seq_gb, fasta_out, 'fasta')
-                    print(acc,order,family,organism, sep='\t',file=acc_map_handle)
-                except Bio.Seq.UndefinedSequenceError:
-                    #sometimes fresh releases contain sequences without the actual letters.
-                    Path(filename).unlink() # delete the empty file 
-                    print(f'No sequence contained in {acc}', file=sys.stderr)
-                    continue
+            try:
+                family = [name for name in seq_gb.annotations['taxonomy'] if name.endswith('idae') or name.endswith('aceae')][-1]
+            except IndexError: #other family syntaz
+                family = 'others'
+            try:
+                order = seq_gb.annotations['taxonomy'][seq_gb.annotations['taxonomy'].index(family)-1]
+            except: #No order assigned (Tenrecs and Moles)
+                order = 'NA'
+            organism = seq_gb.annotations['organism'].replace(' ', '_')
+            if any(x in organism for x in ['[','(','{']): #[Candida], (In: Bacteria) --> unclear taxonomy, abort
+                continue
+            if organism in excluded_species:
+                continue
+            acc = seq_gb.id
+            filename = f"{family}_{acc}_{organism}.fasta"
+            try:
+                # some of the bacteria names contain '/'...
+                with open(filename.replace('/','_'),'w') as fasta_out:
+                    SeqIO.write(seq_gb, fasta_out, 'fasta')
+                print(acc,order,family,organism.replace('/','_'), sep='\t',file=acc_map_handle)
+            except Bio.Seq.UndefinedSequenceError:
+                #sometimes fresh releases contain sequences without the actual letters.
+                Path(filename.replace('/','_')).unlink() # delete the empty file 
+                print(f'No sequence contained in {acc}', file=sys.stderr)
+                continue
+
 acc_map_handle.close()
