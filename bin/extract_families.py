@@ -33,7 +33,7 @@ for arg in sys.argv[3:]:
             except: #No order assigned (Tenrecs and Moles)
                 order = 'NA'
             organism = seq_gb.annotations['organism'].replace(' ', '_')
-            if organism.startswith('['): #[Candida] --> unclear taxonomy, abort
+            if any(x in organism for x in ['[','(','{']): #[Candida], (In: Bacteria) --> unclear taxonomy, abort
                 continue
             if organism in excluded_species:
                 continue
