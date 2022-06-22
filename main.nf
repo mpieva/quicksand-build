@@ -121,6 +121,7 @@ process writeBedFiles{
 for_kraken
     .map{it[2]}
     .toList()
+    .view()
     .set{for_kraken}
 
 process createKrakenDB{
