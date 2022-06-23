@@ -30,6 +30,26 @@ exclude = params.exclude ? Channel.fromPath("${params.exclude}", type:'file') : 
 //
 
 
+process downloadTaxonomy{
+    tag "Download NCBI taxonomy"
+    publishDir "${params.outdir}/kraken", mode: 'copy', pattern: "Mito_db*"
+
+    input:
+        each kmer from kmers 
+    
+    output:
+        tuple "Mito_db_kmer${kmer}", kmer into kraken_db
+        file "orders.txt" into orders
+    
+    script:
+        dbname = "Mito_db_kmer${kmer}"
+        """
+        kraken-build --download-taxonomy --db ${dbname}
+        extract_orders.py $dbname/taxonomy/names.dmp $dbname/taxonomy/nodes.dmp
+        """ 
+}
+
+
 process downloadGenomes{
     publishDir "${params.outdir}/ncbi", mode: 'copy'
     tag "Downloading..."
@@ -49,6 +69,7 @@ process extractFamilies{
     input:
         file genome from downloaded_genomes
         file ex from exclude
+        file 'orders.txt' from orders
 
     output:
         file "*.fasta" into extracted_fasta mode flatten
@@ -59,7 +80,7 @@ process extractFamilies{
             ex = 'None'
         }
         """
-        python3 $baseDir/bin/extract_families.py $baseDir/assets/orders.txt $ex $genome
+        python3 $baseDir/bin/extract_families.py orders.txt $ex $genome
         """
 }
 
@@ -121,15 +142,15 @@ process writeBedFiles{
 for_kraken
     .map{it[2]}
     .toList()
-    .view()
     .set{for_kraken}
 
 process createKrakenDB{
     tag "Create KrakenDB: Kmer ${kmer}"
     publishDir "${params.outdir}/kraken", mode: 'copy', pattern: "Mito_db*"
+    beforeScript 'ulimit -Ss unlimited'
 
     input:
-        each kmer from kmers
+        tuple file(db), kmer from kraken_db
         file "*.fasta" from for_kraken
     
     output:
@@ -139,7 +160,6 @@ process createKrakenDB{
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
-        kraken-build --download-taxonomy --db ${dbname}
         for fasta in *.fasta; do \
             kraken-build --add-to-library \${fasta} --db ${dbname};\
             done
