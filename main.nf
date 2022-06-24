@@ -19,6 +19,7 @@ if (params.help || params.outdir == false ) {
 }
 kmers = Channel.from(params.kmers.toString().split(','))
 params.exclude = ''
+params.include = 'root'
 
 exclude = params.exclude ? Channel.fromPath("${params.exclude}", type:'file') : Channel.from('None')
 
@@ -80,7 +81,7 @@ process extractFamilies{
             ex = 'None'
         }
         """
-        python3 $baseDir/bin/extract_families.py orders.txt $ex $genome
+        python3 $baseDir/bin/extract_families.py ${params.include} orders.txt $ex $genome
         """
 }
 

@@ -52,6 +52,7 @@ on the local repository.
   Pipeline ARGS
        --outdir  PATH    : Directory to save the output in. Default = "out"
        --kmers   KMERS   : Comma-separated list of kmers for which databases are created (e.g. 21,22,23). Default=22
+       --include STRING  : comma-separated string of Taxa that should be in the DB, e.g. "Mammalia". Default='root'
   Nextflow ARGS (only one dash!)
        -profile  PROFILE : Run the pipeline with the assigned profile (see profiles below)
        -resume           : Resume the previous run (if it was stopped in the mean time)

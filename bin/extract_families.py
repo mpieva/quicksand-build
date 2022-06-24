@@ -5,9 +5,13 @@ from collections import defaultdict
 import gzip
 import sys
 
-#import a list of mammalian orders, as they are not annotated in the gb-file
-orders = [x.replace('\n','') for x in open(sys.argv[1])]
-exclude = sys.argv[2]
+#give information about the groups that you want to have included (e.g. Mammalia)
+#import a list of all orders in Refseq, as they are not annotated in the gb-file
+#provide a list of species to exclude
+
+include = [x.strip() for x in sys.argv[1].split(',')] if sys.argv[1] != 'root' else 'root'
+orders = [x.replace('\n','') for x in open(sys.argv[2])]
+exclude = sys.argv[3]
 
 #make a list of species that should not be in the database
 excluded_species = []
@@ -20,18 +24,21 @@ except FileNotFoundError: #no excluded species
     pass
 
 acc_map_handle = open('accmap.tsv', 'w')
-for arg in sys.argv[3:]:   
+for arg in sys.argv[4:]:   
     with gzip.open(arg, 'rt') as gb:
         for seq_gb in SeqIO.parse(gb, 'genbank'):
+            print(seq_gb.annotations['taxonomy'])
+            if include !='root' and not any(x in include for x in seq_gb.annotations['taxonomy']):
+                continue
             #make sure you have a biopython version after https://github.com/biopython/biopython/issues/2844
             try:
                 family = [name for name in seq_gb.annotations['taxonomy'] if name.endswith('idae') or name.endswith('aceae')][-1]
-            except IndexError: #other family syntaz
-                family = 'others'
+            except IndexError: #other family syntax
+                family = 'N/A'
             try:
-                order = seq_gb.annotations['taxonomy'][seq_gb.annotations['taxonomy'].index(family)-1]
+                order = [name for name in seq_gb.annotations['taxonomy'] if name in orders ][-1]
             except: #No order assigned (Tenrecs and Moles)
-                order = 'NA'
+                order = 'N/A'
             organism = seq_gb.annotations['organism'].replace(' ', '_')
             if any(x in organism for x in ['[','(','{']): #[Candida], (In: Bacteria) --> unclear taxonomy, abort
                 continue
