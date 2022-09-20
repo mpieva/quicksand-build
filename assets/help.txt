@@ -1,27 +1,31 @@
 DATASTRUCTURE PIPELINE
 
-Download all mammalian mitochondiral genomes from the current NCBI/Refseq
-release and create the underlying datastructure required by the sediment_nf pipeline.
+Download the mitochondiral genomes from the current NCBI/Refseq
+release and create the underlying datastructure required by the quicksand pipeline.
+for the taxa you want.
 The pipeline creates 4 folders:
     
     1. ncbi:     raw Downloaded files from NCBI
     2. genomes:  Fasta files grouped by Family
     3. masked:   For all fasta files in 'genomes' a bed file created by dustmasker
-    4. kraken:   For the given kmers (see nextflow.config) the corresponding kraken databases
+    4. kraken:   For the given kmers the corresponding kraken databases
     
 USAGE:
-nextflow run main.nf --outdir <PATH>
 
-required:
+nextflow run mpieva/quicksand-build [PARAMETERS] -profile [singularity|docker]
+
+parameters:
     --outdir  PATH:   path to the save-dir. e.g. "/mnt/scratch/.../out"
                       default: '$PWD/out'
 
-optional:
-    --kraken  PATH:   path to your kraken installation folder.
-                      default: '/home/merlin_szymanski/Kraken/install'
-    
     --kmers   STRING: A string of comma-separated kmers: 22,23,24
                       default: 22
 
-    --exclude PATH    path to (tsv)-file with genomes to exclude from the database
-                      format: 'Family\t'Species_name,Species_name'
+    --exclude STRING: A string of comma-separated taxa names 
+                      to be excluded from the kraken-database. Must correspond to the NCBI taxonomy
+                      example: 'Arthropoda,Pan,Gorilla'
+    
+    --include STRING: A string of comma-separated taxa names
+                      to be included in the kraken-database. Must correspond to the NCBI taxonomy
+                      example: 'Mammalia, Daphnia'
+                      default: 'root' (everything)

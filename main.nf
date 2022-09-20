@@ -41,8 +41,6 @@ if (params.help || params.outdir == false ) {
 // Parsing parameters
 
 kmers = Channel.from(params.kmers.toString().split(','))
-params.exclude = ''
-params.include = 'root'
 
 //
 //
@@ -52,6 +50,9 @@ params.include = 'root'
 
 
 process downloadTaxonomy{
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/kraken:1.1.1--pl5321h9f5acd7_7' :
+        'quay.io/biocontainers/kraken:1.1.1--pl5321h9f5acd7_7' }"
     tag "Download NCBI taxonomy"
     publishDir "${params.outdir}/kraken", mode: 'copy', pattern: "Mito_db*"
 
@@ -60,15 +61,32 @@ process downloadTaxonomy{
     
     output:
         tuple "Mito_db_kmer${kmer}", kmer into kraken_db
-        file "order_names.txt" into orders
-        file "family_names.txt" into families
+        file "${dbname}/taxonomy/nodes.dmp" into nodes
     
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
         kraken-build --download-taxonomy --db ${dbname}
-        extract_names.py $dbname/taxonomy/names.dmp $dbname/taxonomy/nodes.dmp order
-        extract_names.py $dbname/taxonomy/names.dmp $dbname/taxonomy/nodes.dmp family
+        """ 
+}
+
+process parseNamesfromNodes{
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/pandas:1.4.3' :
+        'quay.io/biocontainers/pandas:1.4.3' }"
+    tag "Extract names from nodes"
+
+    input:
+        file 'nodes.dmp' from nodes
+    
+    output:
+        file "order_names.txt" into orders
+        file "family_names.txt" into families
+    
+    script:
+        """
+        extract_names.py nodes.dmp order
+        extract_names.py nodes.dmp family
         """ 
 }
 
@@ -87,21 +105,21 @@ process downloadGenomes{
 }
 
 process extractTaxa{
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/biopython:1.78' :
+        'quay.io/biocontainers/biopython:1.78' }"
     tag "Extracting..."
 
     input:
         file genome from downloaded_genomes
         file 'orders.txt' from orders
-        file 'family.txt' from families
+        file 'families.txt' from families
 
     output:
         file "*.fasta" into extracted_fasta mode flatten
         file "*.tsv" into convert_acc
 
     script:
-        if(! params.exclude){
-            params.exclude = 'None'
-        }
         """
         python3 $baseDir/bin/extract_families.py ${params.include} orders.txt ${params.exclude} families.txt $genome 
         """
@@ -117,10 +135,10 @@ process writeFastas{
     tag "Writing $family:$species"
     
     input:
-        set family, accession, species, "input.fasta" from extracted_fasta
+        tuple family, accession, species, "input.fasta" from extracted_fasta
 
     output:
-        set family, species, "${species}.fasta" into (for_bed, for_bwa, for_kraken)
+        tuple family, species, "${species}.fasta" into (for_bed, for_bwa, for_kraken)
     
     script:
         """
@@ -129,11 +147,12 @@ process writeFastas{
 }
 
 process indexFasta{
+    container (workflow.containerEngine ? "merszym/network-aware-bwa:v0.5.10" : null)
     publishDir "${params.outdir}/genomes/${family}/", mode: 'copy'
     tag "$family:$species"
     
     input:
-        set family, species, "${species}.fasta" from for_bwa
+        tuple family, species, "${species}.fasta" from for_bwa
 
     output:
         file "${species}.fasta.*"
@@ -144,19 +163,38 @@ process indexFasta{
         """
 }
 
+process runDustmasker{
+    container (workflow.containerEngine ? "merszym/dustmasker:nextflow" : null)
+    tag "$family:$species"
+
+    input:
+        tuple family, species, "${species}.fasta" from for_bed
+
+    output:
+        tuple family, species, "acclist.txt" into acclist
+
+    script:
+        """
+        dustmasker -in "${species}.fasta" -outfmt acclist > "acclist.txt"
+        """
+}
+
 process writeBedFiles{
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/pandas:1.4.3' :
+        'quay.io/biocontainers/pandas:1.4.3' }"
     publishDir "${params.outdir}/masked/", saveAs: {"${species}.masked.bed"}, mode:'copy'
     tag "$family:$species"
 
     input:
-        set family, species, "${species}.fasta" from for_bed
+        tuple family, species, "acclist.txt" from acclist
 
     output:
         file "${species}.masked.bed"
 
     script:
         """
-        dustmasker -in "${species}.fasta" -outfmt acclist | \
+        cat acclist.txt | \
         python3 $baseDir/bin/dustmasker_interval_to_bed.py \
         > "${species}.masked.bed";
         """
@@ -168,6 +206,9 @@ for_kraken
     .set{for_kraken}
 
 process createKrakenDB{
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/kraken:1.1.1--pl5321h9f5acd7_7' :
+        'quay.io/biocontainers/kraken:1.1.1--pl5321h9f5acd7_7' }"
     tag "Create KrakenDB: Kmer ${kmer}"
     publishDir "${params.outdir}/kraken", mode: 'copy', pattern: "Mito_db*"
     beforeScript 'ulimit -Ss unlimited'
@@ -178,7 +219,7 @@ process createKrakenDB{
     
     output:
         file "Mito_db_kmer${kmer}"
-        set "nucl_gb.accession2taxid", "names_dict.json" into taxid_map
+        tuple "nucl_gb.accession2taxid", "${dbname}/taxonomy/names.dmp" into for_taxid_map
     
     script:
         dbname = "Mito_db_kmer${kmer}"
@@ -188,17 +229,37 @@ process createKrakenDB{
             done
             kraken-build --build --db ${dbname} --kmer $kmer
         cp $dbname/taxonomy/nucl_gb.accession2taxid .
-        python3 $baseDir/bin/parse_names.py $dbname/taxonomy/names.dmp
         """
 }
 
+process prepareTaxonomyFile{
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/pandas:1.4.3' :
+        'quay.io/biocontainers/pandas:1.4.3' }"
+    tag "Parse Taxonomy: Kmer ${kmer}"
+
+    input:
+        tuple "nucl_gb.accession2taxid", "names.dmp" from for_taxid_map
+    
+    output:
+        tuple "nucl_gb.accession2taxid", "names_dict.json" into taxid_map
+    
+    script:
+        dbname = "Mito_db_kmer${kmer}"
+        """
+        python3 $baseDir/bin/parse_names.py names.dmp
+        """
+}
 
 process createFileMap{
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/pandas:1.4.3' :
+        'quay.io/biocontainers/pandas:1.4.3' }"
     publishDir "${params.outdir}/genomes", mode:'copy'
     
     input:
         file "acc_map.tsv" from convert_acc
-        set "nucl_gb.accession2taxid", "names_dict.json" from taxid_map
+        tuple "nucl_gb.accession2taxid", "names_dict.json" from taxid_map
 
     output:
         file "*.tsv" 
