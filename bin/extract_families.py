@@ -9,40 +9,35 @@ import sys
 #import a list of all orders in Refseq, as they are not annotated in the gb-file
 #provide a list of species to exclude
 
-include = [x.strip() for x in sys.argv[1].split(',')] if sys.argv[1] != 'root' else 'root'
-orders = [x.replace('\n','') for x in open(sys.argv[2])]
-exclude = sys.argv[3]
+include = set([x.strip() for x in sys.argv[1].split(',')]) if sys.argv[1] != 'root' else 'root'
+orders = set([x.replace('\n','') for x in open(sys.argv[2])])
+exclude_string = sys.argv[3]
+families = set([x.replace('\n','') for x in open(sys.argv[4])])
 
-#make a list of species that should not be in the database
-excluded_species = []
-try:
-    with open(exclude, 'r') as ex:
-        for line in ex:
-            #Hominidae\tHomo_sapiens,Homo_neandertalensis
-            excluded_species.extend(line.replace('\n','').split('\t')[1].split(','))
-except FileNotFoundError: #no excluded species
-    pass
+#make a list of taxa that should be excluded from the database
+exclude = set([x for x in exclude_string.split(',')]) if exclude_string != 'None' else set([])
 
 acc_map_handle = open('accmap.tsv', 'w')
-for arg in sys.argv[4:]:   
+for arg in sys.argv[5:]:   
     with gzip.open(arg, 'rt') as gb:
         for seq_gb in SeqIO.parse(gb, 'genbank'):
-            print(seq_gb.annotations['taxonomy'])
-            if include !='root' and not any(x in include for x in seq_gb.annotations['taxonomy']):
+            tax = set(seq_gb.annotations['taxonomy'])
+            if include !='root' and len(include.intersection(tax))==0:
+                continue
+            #check exclude and skip entry if excluded
+            if len(exclude.intersection(tax))>0:
                 continue
             #make sure you have a biopython version after https://github.com/biopython/biopython/issues/2844
             try:
-                family = [name for name in seq_gb.annotations['taxonomy'] if name.endswith('idae') or name.endswith('aceae')][-1]
-            except IndexError: #other family syntax
+                family = families.intersection(tax).pop() #is only one item, so pop is okay
+            except TypeError: #no family?
                 family = 'N/A'
             try:
-                order = [name for name in seq_gb.annotations['taxonomy'] if name in orders ][-1]
-            except: #No order assigned (Tenrecs and Moles)
+                order = orders.intersection(tax).pop()
+            except TypeError: #No order assigned (e.g. Tenrecs and Moles)
                 order = 'N/A'
             organism = seq_gb.annotations['organism'].replace(' ', '_')
             if any(x in organism for x in ['[','(','{']): #[Candida], (In: Bacteria) --> unclear taxonomy, abort
-                continue
-            if organism in excluded_species:
                 continue
             acc = seq_gb.id
             filename = f"{family}_{acc}_{organism}.fasta"
@@ -51,6 +46,7 @@ for arg in sys.argv[4:]:
                 with open(filename.replace('/','_'),'w') as fasta_out:
                     SeqIO.write(seq_gb, fasta_out, 'fasta')
                 print(acc,order,family,organism.replace('/','_'), sep='\t',file=acc_map_handle)
+
             except Bio.Seq.UndefinedSequenceError:
                 #sometimes fresh releases contain sequences without the actual letters.
                 Path(filename.replace('/','_')).unlink() # delete the empty file 

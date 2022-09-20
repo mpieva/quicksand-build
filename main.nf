@@ -1,10 +1,30 @@
 #!/usr/bin/env nextflow
 
+nextflow.enable.dsl = 1
+
 red = "\033[0;31m"
 white = "\033[0m"
 cyan = "\033[0;36m"
 yellow = "\033[0;33m"
 
+
+log.info """
+[quicksand-build]: Execution started: ${workflow.start.format('dd.MM.yyyy HH:mm')} ${cyan}
+
+  =============================
+  =  ================  =====  =
+  =  =====  =  ==  ==  =====  =
+  =    ===  =  ======  ===    =
+  =  =  ==  =  ==  ==  ==  =  =
+  =  =  ==  =  ==  ==  ==  =  =
+  =  =  ==  =  ==  ==  ==  =  =
+  =    ====    ==  ==  ===    =
+  =============================
+
+  ${white}${workflow.manifest.description} ${cyan}~ Version ${workflow.manifest.version} ${white}
+
+ --------------------------------------------------------------
+"""
 
 //
 //
@@ -17,12 +37,12 @@ if (params.help || params.outdir == false ) {
     print file("$baseDir/assets/help.txt").text
     exit 0
 }
+
+// Parsing parameters
+
 kmers = Channel.from(params.kmers.toString().split(','))
 params.exclude = ''
 params.include = 'root'
-
-exclude = params.exclude ? Channel.fromPath("${params.exclude}", type:'file') : Channel.from('None')
-
 
 //
 //
@@ -40,13 +60,15 @@ process downloadTaxonomy{
     
     output:
         tuple "Mito_db_kmer${kmer}", kmer into kraken_db
-        file "orders.txt" into orders
+        file "order_names.txt" into orders
+        file "family_names.txt" into families
     
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
         kraken-build --download-taxonomy --db ${dbname}
-        extract_orders.py $dbname/taxonomy/names.dmp $dbname/taxonomy/nodes.dmp
+        extract_names.py $dbname/taxonomy/names.dmp $dbname/taxonomy/nodes.dmp order
+        extract_names.py $dbname/taxonomy/names.dmp $dbname/taxonomy/nodes.dmp family
         """ 
 }
 
@@ -64,13 +86,13 @@ process downloadGenomes{
         """
 }
 
-process extractFamilies{
+process extractTaxa{
     tag "Extracting..."
 
     input:
         file genome from downloaded_genomes
-        file ex from exclude
         file 'orders.txt' from orders
+        file 'family.txt' from families
 
     output:
         file "*.fasta" into extracted_fasta mode flatten
@@ -78,10 +100,10 @@ process extractFamilies{
 
     script:
         if(! params.exclude){
-            ex = 'None'
+            params.exclude = 'None'
         }
         """
-        python3 $baseDir/bin/extract_families.py ${params.include} orders.txt $ex $genome
+        python3 $baseDir/bin/extract_families.py ${params.include} orders.txt ${params.exclude} families.txt $genome 
         """
 }
 
