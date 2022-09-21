@@ -21,9 +21,10 @@ log.info """
   =    ====    ==  ==  ===    =
   =============================
 
-  ${white}${workflow.manifest.description} ${cyan}~ Version ${workflow.manifest.version} ${white}
+${white}${workflow.manifest.description} 
+${cyan}Version ${workflow.manifest.version} ${white}
 
- --------------------------------------------------------------
+--------------------------------------------------------------
 """
 
 //
@@ -61,7 +62,7 @@ process downloadTaxonomy{
     
     output:
         tuple "Mito_db_kmer${kmer}", kmer into kraken_db
-        file "${dbname}/taxonomy/nodes.dmp" into nodes
+        tuple "${dbname}/taxonomy/names.dmp", "${dbname}/taxonomy/nodes.dmp" into nodes
     
     script:
         dbname = "Mito_db_kmer${kmer}"
@@ -77,7 +78,7 @@ process parseNamesfromNodes{
     tag "Extract names from nodes"
 
     input:
-        file 'nodes.dmp' from nodes
+        tuple 'names.dmp','nodes.dmp' from nodes
     
     output:
         file "order_names.txt" into orders
@@ -85,15 +86,15 @@ process parseNamesfromNodes{
     
     script:
         """
-        extract_names.py nodes.dmp order
-        extract_names.py nodes.dmp family
+        extract_names.py names.dmp nodes.dmp order
+        extract_names.py names.dmp nodes.dmp family
         """ 
 }
 
 
 process downloadGenomes{
     publishDir "${params.outdir}/ncbi", mode: 'copy'
-    tag "Downloading..."
+    tag "Download RefSeq"
 
     output:
         file '*.gz' into downloaded_genomes
@@ -108,7 +109,7 @@ process extractTaxa{
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/biopython:1.78' :
         'quay.io/biocontainers/biopython:1.78' }"
-    tag "Extracting..."
+    tag "Extract RefSeq"
 
     input:
         file genome from downloaded_genomes
@@ -219,7 +220,7 @@ process createKrakenDB{
     
     output:
         file "Mito_db_kmer${kmer}"
-        tuple "nucl_gb.accession2taxid", "${dbname}/taxonomy/names.dmp" into for_taxid_map
+        tuple "nucl_gb.accession2taxid", "${dbname}/taxonomy/names.dmp", kmer into for_taxid_map
     
     script:
         dbname = "Mito_db_kmer${kmer}"
@@ -239,7 +240,7 @@ process prepareTaxonomyFile{
     tag "Parse Taxonomy: Kmer ${kmer}"
 
     input:
-        tuple "nucl_gb.accession2taxid", "names.dmp" from for_taxid_map
+        tuple "nucl_gb.accession2taxid", "names.dmp", kmer from for_taxid_map
     
     output:
         tuple "nucl_gb.accession2taxid", "names_dict.json" into taxid_map

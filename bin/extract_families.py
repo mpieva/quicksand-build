@@ -30,11 +30,11 @@ for arg in sys.argv[5:]:
             #make sure you have a biopython version after https://github.com/biopython/biopython/issues/2844
             try:
                 family = families.intersection(tax).pop() #is only one item, so pop is okay
-            except TypeError: #no family?
+            except KeyError: #no family?
                 family = 'N/A'
             try:
                 order = orders.intersection(tax).pop()
-            except TypeError: #No order assigned (e.g. Tenrecs and Moles)
+            except KeyError: #No order assigned (e.g. Tenrecs and Moles)
                 order = 'N/A'
             organism = seq_gb.annotations['organism'].replace(' ', '_')
             if any(x in organism for x in ['[','(','{']): #[Candida], (In: Bacteria) --> unclear taxonomy, abort
