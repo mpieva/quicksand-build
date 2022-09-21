@@ -219,7 +219,7 @@ process createKrakenDB{
     
     output:
         file "Mito_db_kmer${kmer}"
-        tuple "nucl_gb.accession2taxid", "${dbname}/taxonomy/names.dmp" into for_taxid_map
+        tuple "nucl_gb.accession2taxid", "${dbname}/taxonomy/names.dmp", kmer into for_taxid_map
     
     script:
         dbname = "Mito_db_kmer${kmer}"
@@ -239,7 +239,7 @@ process prepareTaxonomyFile{
     tag "Parse Taxonomy: Kmer ${kmer}"
 
     input:
-        tuple "nucl_gb.accession2taxid", "names.dmp" from for_taxid_map
+        tuple "nucl_gb.accession2taxid", "names.dmp", kmer from for_taxid_map
     
     output:
         tuple "nucl_gb.accession2taxid", "names_dict.json" into taxid_map
