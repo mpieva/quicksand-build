@@ -21,9 +21,10 @@ log.info """
   =    ====    ==  ==  ===    =
   =============================
 
-  ${white}${workflow.manifest.description} ${cyan}~ Version ${workflow.manifest.version} ${white}
+${white}${workflow.manifest.description} 
+${cyan}Version ${workflow.manifest.version} ${white}
 
- --------------------------------------------------------------
+--------------------------------------------------------------
 """
 
 //
@@ -93,7 +94,7 @@ process parseNamesfromNodes{
 
 process downloadGenomes{
     publishDir "${params.outdir}/ncbi", mode: 'copy'
-    tag "Downloading..."
+    tag "Download RefSeq"
 
     output:
         file '*.gz' into downloaded_genomes
@@ -108,7 +109,7 @@ process extractTaxa{
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/biopython:1.78' :
         'quay.io/biocontainers/biopython:1.78' }"
-    tag "Extracting..."
+    tag "Extract RefSeq"
 
     input:
         file genome from downloaded_genomes
