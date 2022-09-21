@@ -62,7 +62,7 @@ process downloadTaxonomy{
     
     output:
         tuple "Mito_db_kmer${kmer}", kmer into kraken_db
-        file "${dbname}/taxonomy/nodes.dmp" into nodes
+        tuple "${dbname}/taxonomy/names.dmp", "${dbname}/taxonomy/nodes.dmp" into nodes
     
     script:
         dbname = "Mito_db_kmer${kmer}"
@@ -78,7 +78,7 @@ process parseNamesfromNodes{
     tag "Extract names from nodes"
 
     input:
-        file 'nodes.dmp' from nodes
+        tuple 'names.dmp','nodes.dmp' from nodes
     
     output:
         file "order_names.txt" into orders
@@ -86,8 +86,8 @@ process parseNamesfromNodes{
     
     script:
         """
-        extract_names.py nodes.dmp order
-        extract_names.py nodes.dmp family
+        extract_names.py names.dmp nodes.dmp order
+        extract_names.py names.dmp nodes.dmp family
         """ 
 }
 
