@@ -31,11 +31,11 @@ for arg in sys.argv[5:]:
             try:
                 family = families.intersection(tax).pop() #is only one item, so pop is okay
             except KeyError: #no family?
-                family = 'N/A'
+                family = 'Unassigned'
             try:
                 order = orders.intersection(tax).pop()
             except KeyError: #No order assigned (e.g. Tenrecs and Moles)
-                order = 'N/A'
+                order = 'Unassigned'
             organism = seq_gb.annotations['organism'].replace(' ', '_')
             if any(x in organism for x in ['[','(','{']): #[Candida], (In: Bacteria) --> unclear taxonomy, abort
                 continue
