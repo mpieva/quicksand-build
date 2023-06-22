@@ -42,6 +42,7 @@ if (params.help || params.outdir == false ) {
 // Parsing parameters
 
 kmers = Channel.from(params.kmers.toString().split(','))
+params.threads = 1
 
 //
 //
@@ -67,7 +68,7 @@ process downloadTaxonomy{
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
-        kraken-build --download-taxonomy --db ${dbname}
+        kraken-build --download-taxonomy --db ${dbname} --threads ${params.threads}
         """ 
 }
 
@@ -228,7 +229,7 @@ process createKrakenDB{
         for fasta in *.fasta; do \
             kraken-build --add-to-library \${fasta} --db ${dbname};\
             done
-            kraken-build --build --db ${dbname} --kmer $kmer
+            kraken-build --build --db ${dbname} --kmer $kmer --threads ${params.threads}
         cp $dbname/taxonomy/nucl_gb.accession2taxid .
         """
 }
