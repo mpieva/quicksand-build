@@ -12,6 +12,7 @@ include { INDEX_FASTA } from './modules/local/index_fasta'
 include { RUN_DUSTMASKER } from './modules/local/run_dustmasker'
 include { WRITE_BEDFILES } from './modules/local/make_bedfiles'
 include { MAKE_FILEMAP } from './modules/local/make_filemap'
+include { PREPARE_TAXONOMY } from './modules/local/prepare_taxonomy'
 
 //
 //
@@ -28,7 +29,6 @@ if (params.help || params.outdir == false ) {
 // Parsing parameters
 
 kmer = Channel.from(params.kmer)
-params.threads = 1
 
 //
 //
