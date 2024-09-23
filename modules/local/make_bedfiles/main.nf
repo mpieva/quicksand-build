@@ -14,7 +14,7 @@ process WRITE_BEDFILES{
     script:
         """
         cat acclist.txt | \
-        python3 dustmasker_interval_to_bed.py \
+        dustmasker_interval_to_bed.py \
         > "${species}.masked.bed";
         """
 }
