@@ -29,6 +29,7 @@ if (params.help || params.outdir == false ) {
 // Parsing parameters
 
 kmer = Channel.from(params.kmer)
+taxonomy = params.taxonomy ? Channel.fromPath("${params.taxonomy}", type:'dir', checkIfExists:true) : []
 
 //
 //
@@ -72,7 +73,7 @@ ${cyan}Version ${workflow.manifest.version} ${white}
 // 2. Download and parse Taxonomy
 //
 
-KRAKEN_TAXONOMY( kmer )
+KRAKEN_TAXONOMY( kmer, taxonomy )
 
 ch_database = KRAKEN_TAXONOMY.out.database
 ch_nodes = KRAKEN_TAXONOMY.out.nodes
@@ -105,6 +106,7 @@ EXTRACT_FASTA(
 
 ch_fasta = EXTRACT_FASTA.out.fasta.flatten()
 ch_convert = EXTRACT_FASTA.out.tsv
+ch_taxidmap = EXTRACT_FASTA.out.taxidmap
 
 ch_extracted_fasta = ch_fasta.map{
     [it.baseName.split("_")[0], it.baseName.split('_')[1..2].join("_"), it.baseName.split("_")[3..-1].join("_"), it]
@@ -135,14 +137,14 @@ ch_forkraken = ch_raw_fasta
     .map{it[2]}
     .toList()
 
-KRAKEN_BUILD(ch_database, ch_forkraken)
+KRAKEN_BUILD(ch_database, ch_forkraken, ch_taxidmap)
 
-ch_taxonomy = KRAKEN_BUILD.out.taxonomy
+//ch_taxonomy = KRAKEN_BUILD.out.taxonomy
 
-PREPARE_TAXONOMY(ch_taxonomy)
+//PREPARE_TAXONOMY(ch_taxonomy)
 
-ch_json = PREPARE_TAXONOMY.out.json
+//ch_json = PREPARE_TAXONOMY.out.json
 
-MAKE_FILEMAP( ch_convert, ch_json)
+//MAKE_FILEMAP( ch_convert, ch_json)
 
 }

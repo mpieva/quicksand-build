@@ -1,26 +1,32 @@
 process KRAKEN_BUILD{
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/kraken:1.1.1--pl5321h9f5acd7_7' :
-        'quay.io/biocontainers/kraken:1.1.1--pl5321h9f5acd7_7' }"
-    tag "Create KrakenDB: Kmer ${kmer}"
+        'https://depot.galaxyproject.org/singularity/krakenuniq:1.0.2--pl5321h19e8d03_0':
+        'quay.io/biocontainers/krakenuniq:1.0.2--pl5321h19e8d03_0' }"
+    tag "Index DB (Kmer ${kmer})"
     publishDir "${params.outdir}/kraken", mode: 'copy', pattern: "Mito_db*"
     beforeScript 'ulimit -Ss unlimited'
 
     input:
         tuple path("Mito_db_kmer${kmer}"), val(kmer)
         path("*.fasta")
+        path("krakenuniq.map")
 
     output:
         path("Mito_db_kmer${kmer}"), emit: database
-        tuple path("nucl_gb.accession2taxid"), path("${dbname}/taxonomy/names.dmp"), val(kmer), emit: taxonomy
+        //tuple path("seqid2taxid.map"), path("${dbname}/taxonomy/names.dmp"), val(kmer), emit: taxonomy
+        //--taxids-for-genomes cant be used as it breaks backwarts-compability with quicksand
 
     script:
         dbname = "Mito_db_kmer${kmer}"
         """
+        mkdir ${dbname}/library
         for fasta in *.fasta; do \
-            kraken-build --add-to-library \${fasta} --db ${dbname};\
-            done
-            kraken-build --build --db ${dbname} --kmer $kmer --threads ${params.threads}
-        cp $dbname/taxonomy/nucl_gb.accession2taxid .
+            mv \${fasta} ${dbname}/library;\
+        done
+        cp krakenuniq.map ${dbname}/library/
+        krakenuniq-build --db ${dbname} --kmer $kmer --threads ${params.threads}
+
+        cut ${dbname}/seqid2taxid.map -f 1,2 > seqid2taxid_correct.map
+        mv seqid2taxid_correct.map ${dbname}/seqid2taxid.map
         """
 }

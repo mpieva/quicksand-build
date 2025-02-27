@@ -26,15 +26,27 @@ exclude = (
 )
 
 acc_map_handle = open("accmap.tsv", "w")
+krakenuniq_map = open("krakenuniq.map", "w")
+
 for arg in sys.argv[5:]:
     with gzip.open(arg, "rt") as gb:
         for seq_gb in SeqIO.parse(gb, "genbank"):
             tax = set(seq_gb.annotations["taxonomy"])
+
+            # check the include parameter 
             if include != "root" and len(include.intersection(tax)) == 0:
                 continue
             # check exclude and skip entry if excluded
             if len(exclude.intersection(tax)) > 0:
                 continue
+            organism = seq_gb.annotations["organism"].replace(" ", "_").replace("/", "_")
+            if any(
+                x in organism for x in ["[", "(", "{"]
+            ):  # [Candida], (In: Bacteria) --> unclear taxonomy, abort
+                continue
+            # extract the taxonomy-ID from the genebank entry
+            taxid = seq_gb.features[0].qualifiers['db_xref'][0].split(":")[1]
+            
             # make sure you have a biopython version after https://github.com/biopython/biopython/issues/2844
             try:
                 family = families.intersection(
@@ -46,29 +58,34 @@ for arg in sys.argv[5:]:
                 order = orders.intersection(tax).pop()
             except KeyError:  # No order assigned (e.g. Tenrecs and Moles)
                 order = "Unassigned"
-            organism = seq_gb.annotations["organism"].replace(" ", "_")
-            if any(
-                x in organism for x in ["[", "(", "{"]
-            ):  # [Candida], (In: Bacteria) --> unclear taxonomy, abort
-                continue
+            
             acc = seq_gb.id
             filename = f"{family}_{acc}_{organism}.fasta"
             try:
                 # some of the bacteria names contain '/'...
-                with open(filename.replace("/", "_"), "w") as fasta_out:
+                with open(filename, "w") as fasta_out:
                     SeqIO.write(seq_gb, fasta_out, "fasta")
+                # this is for backwarts-compability
                 print(
                     acc,
                     order,
                     family,
-                    organism.replace("/", "_"),
+                    organism,
                     sep="\t",
                     file=acc_map_handle,
+                )
+                # this is for kraken-uniq based database construction 
+                print(
+                    acc,
+                    taxid,
+                    organism,
+                    sep="\t",
+                    file=krakenuniq_map
                 )
 
             except Bio.Seq.UndefinedSequenceError:
                 # sometimes fresh releases contain sequences without the actual letters.
-                Path(filename.replace("/", "_")).unlink()  # delete the empty file
+                Path(filename).unlink()  # delete the empty file
                 print(f"No sequence contained in {acc}", file=sys.stderr)
                 continue
 

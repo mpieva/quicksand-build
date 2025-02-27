@@ -13,6 +13,7 @@ process EXTRACT_FASTA{
     output:
         path("*.fasta"), emit: fasta
         path("*.tsv"), emit: tsv
+        path("*.map"), emit: taxidmap
 
     script:
         """

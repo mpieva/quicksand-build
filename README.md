@@ -27,8 +27,8 @@ Make sure to check the [RefSeq Website](https://www.ncbi.nlm.nih.gov/refseq/) an
          mitochondrion.{n}.genomic.gbff.gz - raw downloaded files from NCBI
     genomes: 
          genomes/{family}/{species}.fasta - The indexed mitochondrial genomes used for mapping with bwa
-         genomes/taxid_map.tsv - A table with all nodes in the database - used to get all reference genomes for one taxon ID
-    masked:
+         genomes/taxid_map.tsv - A table with all nodes in the database (for backwards compability)
+     masked:
          masked/{species}.masked.bed - Bed files for all species in the database showing low-complexity regions
     kraken:
          kraken/Mito_db_kmer{kmersize} - A preindexed Kraken-database for the given kmers containing all the species in the database
@@ -58,9 +58,11 @@ The pipeline accepts the following parameters:
 ```    
   Pipeline ARGS
        --outdir  PATH    : Directory to save the output in. Default = "out"
-       --kmers   KMERS   : Comma-separated list of kmers for which databases are created (e.g. 21,22,23). Default=22
+       --kmers   KMERS   : Kmer-size to be used for the kraken database are created (e.g. 23). Default=22
        --include STRING  : comma-separated string of Taxa that should be in the DB, e.g. "Mammalia". Default='root'
        --exclude STRING  : comma-separated string of Taxa that mustn't be in the DB, e.g. "Pan,Gorilla".
+       --genomes PATH    : A folder to provide extra genomes for the kraken-database // not implemented yet
+       --taxonomy PATH   : A folder containing a custom NCBI style `names.dmp` and `nodes.dmp` files
 
   Nextflow ARGS (only one dash!)
        -profile  PROFILE : Run the pipeline with the assigned profile (see profiles below)
