@@ -117,7 +117,8 @@ ch_genomes_maps = ch_genomes.maps.splitCsv(sep:'\t', header:['id','TaxID']).map{
 
 // we need the genome-channels also as files again
 ch_genomes_maps_file = ch_genomes_maps.collectFile( name:"extra_genomes.map", newLine:true){ [it[1].id, it[1].TaxID, it[1].id].join("\t") }
-ch_genomes_fasta_files = ch_genomes_fasta.collectFile {it -> ["${it[0]}.genome.fasta", ">${it[0]}\n${it[1].sequence}"] }
+// collect the fasta by taxID --> all extra genomes of e.g. Homo_sapiens go into 1 fasta file
+ch_genomes_fasta_files = ch_genomes_fasta.collectFile {it -> ["${it[0]}.genome.fasta", ">${it[0]}\n${it[1].seqString}"] }
     .map{file -> [file.baseName.replace(".genome",""), file]}
 
 //bring these two files together for each entry
