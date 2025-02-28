@@ -10,6 +10,6 @@ process WRITE_FASTA{
 
     script:
         """
-        cat input.fasta > "${species}.fasta"
+        cp input.fasta "${species}.fasta"
         """
 }
