@@ -7,16 +7,13 @@ process EXTRACT_FASTA{
     input:
         tuple val(include), val(exclude)
         path(genome)
-        path('orders.txt')
-        path('families.txt')
 
     output:
         path("*.fasta"), emit: fasta
-        path("*.tsv"), emit: tsv
         path("*.map"), emit: krakenuniq_map
 
     script:
         """
-        extract_families.py ${include} orders.txt ${exclude} families.txt ${genome}
+        extract_families.py ${include} ${exclude} ${genome}
         """
 }

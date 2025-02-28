@@ -5,15 +5,13 @@
 include { KRAKEN_TAXONOMY } from './modules/local/kraken_taxonomy'
 include { PARSE_TAXONOMY } from './modules/local/parse_taxonomy'
 include { KRAKEN_BUILD } from './modules/local/kraken_build'
-include { PARSE_NAMES } from './modules/local/parse_names'
 include { DOWNLOAD_NCBI } from './modules/local/download_NCBI'
 include { EXTRACT_FASTA } from './modules/local/extract_fasta'
+include { CONCAT_FASTA } from './modules/local/concat_fasta'
 include { WRITE_FASTA } from './modules/local/write_fasta'
 include { INDEX_FASTA } from './modules/local/index_fasta'
 include { RUN_DUSTMASKER } from './modules/local/run_dustmasker'
 include { WRITE_BEDFILES } from './modules/local/make_bedfiles'
-include { MAKE_FILEMAP } from './modules/local/make_filemap'
-include { PREPARE_TAXONOMY } from './modules/local/prepare_taxonomy'
 
 //
 //
@@ -34,8 +32,7 @@ def has_ending(file, extension){
 // Parsing parameters
 kmer = Channel.from(params.kmer)
 taxonomy = params.taxonomy ? Channel.fromPath("${params.taxonomy}", type:'dir', checkIfExists:true) : []
-ch_genomes = params.genomes ? Channel.fromPath("${params.genomes}/*", checkIfExists:true) : Channel.empty()
-ch_genomes_for_krakenuniq = params.genomes ? Channel.fromPath("${params.genomes}", type:'dir', checkIfExists:true) : []
+ch_extra_genomes = params.genomes ? Channel.fromPath("${params.genomes}/*", checkIfExists:true) : Channel.empty()
 
 //
 //
@@ -86,12 +83,6 @@ KRAKEN_TAXONOMY( kmer, taxonomy )
 ch_database = KRAKEN_TAXONOMY.out.database
 ch_nodes = KRAKEN_TAXONOMY.out.nodes
 
-PARSE_NAMES( ch_nodes )
-
-ch_families = PARSE_NAMES.out.families
-ch_orders = PARSE_NAMES.out.orders
-
-
 //
 // 3. In parallel, download the genomes from NCBI
 //
@@ -100,32 +91,45 @@ DOWNLOAD_NCBI()
 
 ch_gbff = DOWNLOAD_NCBI.out.gbff
 
+//
+// 4. Extract the genbank files into individual fasta files
+//
+
+EXTRACT_FASTA(
+    [params.include, params.exclude],
+    ch_gbff,
+)
+
+ch_fasta = EXTRACT_FASTA.out.fasta.flatten()
+ch_krakenuniq_map = EXTRACT_FASTA.out.krakenuniq_map.splitCsv(sep:'\t', header:["id","TaxID","ident"]).map{[it.id, it]}
+// [id, data]
+
+ch_extracted_fasta = ch_fasta.map{ it -> 
+    [it.baseName.split("__")[1], it.baseName.split("__")[0], it]
+}
+// [id, taxid, fasta]
 
 //
-// 3.5 Parse extra-genomes 
+// 5. Parse extra-genomes and mix with extracted genomes
 //
 
 //separate input-fasta and map file
-ch_genomes = ch_genomes.branch{
+ch_extra_genomes = ch_extra_genomes.branch{
     fasta: has_ending(it, ['fa','fasta','fas'])
     maps: has_ending(it, ['map'])
     fail:true
 }
 
-ch_genomes_fasta = ch_genomes.fasta.splitFasta(record: [id: true, seqString: true]).map{[it.id, it]}
-ch_genomes_maps = ch_genomes.maps.splitCsv(sep:'\t', header:['id','TaxID']).map{[it.id, it]}
+// mix the added map-file to the extracted one
+// now remove duplicated accession IDs
+ch_krakenuniq_map = ch_krakenuniq_map.mix(
+    ch_extra_genomes.maps.splitCsv(sep:'\t', header:['id','TaxID','ident']).map{[it.id, it]}
+).unique{it[0]}
 
-// we need the genome-channels also as files again
-ch_genomes_maps_file = ch_genomes_maps.collectFile( name:"extra_genomes.map", newLine:true){ [it[1].id, it[1].TaxID, it[1].id].join("\t") }
-// collect the fasta by taxID --> all extra genomes of e.g. Homo_sapiens go into 1 fasta file
-ch_genomes_fasta_files = ch_genomes_fasta.collectFile {it -> ["${it[0]}.genome.fasta", ">${it[0]}\n${it[1].seqString}"] }
-    .map{file -> [file.baseName.replace(".genome",""), file]}
+// create ONE maps file to extract the taxonomy
+ch_genomes_maps_file = ch_krakenuniq_map.collectFile( name:"krakenUniq.map", newLine:true){ [it[1].id, it[1].TaxID, it[1].ident].join("\t") }
 
-//bring these two files together for each entry
-ch_genomes = ch_genomes_fasta_files.combine(ch_genomes_maps, by:0)
-// this is now 1 channel for each fasta-file with [id, fasta-file, meta]
-
-// Prepare the Taxonomy!
+// Extract the Taxonomy JSON!
 PARSE_TAXONOMY ( ch_nodes, ch_genomes_maps_file )
 ch_taxonomy_json = PARSE_TAXONOMY.out.json
 
@@ -134,41 +138,47 @@ ch_taxonomy_json.map{ json ->
     [jsonSlurper.parseText(file(json).text)]
 }.set{ json }
 
-ch_genomes = ch_genomes.combine(json).map{id,fasta,meta,json -> [id,fasta,meta+json[meta.TaxID]]}
+// Now add the taxID to the genomes that are not yet with taxID
+ch_genomes_fasta = ch_extra_genomes.fasta.splitFasta(record: [id: true, seqString: true]).map{[it.id, it]}
 
-// update the fasta file channel to fit the format of the "extracted fasta"
-// [family accession, species, "input.fasta"]
-ch_genomes = ch_genomes.map{
+// collect the fasta by taxID --> all extra genomes of e.g. Homo_sapiens go into 1 fasta file
+ch_genomes_fasta_files = ch_genomes_fasta.collectFile(newLine:true){ it -> ["${it[0]}.fasta", ">${it[0]}\n${it[1].seqString}"] }
+    .map{file -> [file.baseName, file]} //[accession, file]
+
+//bring merge them together to add the taxID
+ch_genomes_fasta_files = ch_genomes_fasta_files.combine(ch_krakenuniq_map, by:0).map{
+    [it[0], it[2].TaxID, it[1]] // [id, taxid, fasta]
+}
+
+//combine with the extracted fasta
+ch_extracted_fasta = ch_extracted_fasta.mix(ch_genomes_fasta_files).unique{it[0]}
+
+//and get the taxonomy from the json
+ch_extracted_fasta = ch_extracted_fasta.combine(json).map{id,taxid,fasta,json -> [id,fasta,taxid,json[taxid]]}
+
+//now we MIGHT have multiple fasta from the same organism. So er read all the fasta-files AGAIN and
+//save the records into files by taxID
+//if we only download from RefSeq, that results in the same files, since its a non-redundant database
+//but extra-genomes (e.g. 5 different neanderthals) would otherwise overwrite each other later 
+
+ch_fasta_for_cat = ch_extracted_fasta.groupTuple(by:2).map{it -> [it[1], it[2], it[3].first()]}
+
+CONCAT_FASTA(ch_fasta_for_cat)
+
+ch_genomes = CONCAT_FASTA.out.fasta
+
+
+ch_for_writing = ch_genomes.map{
     [
-        it[2].family, 
-        it[0], 
+        it[2].family,
         it[2].subspecies ?: it[2].species,
-        it[1]
+        it[0]
     ]
 }
 
-//
-// 4. Extract the genbank files into individual fasta files
-//
-
-EXTRACT_FASTA(
-        [params.include, params.exclude],
-        ch_gbff,
-        ch_orders,
-        ch_families
-)
-
-ch_fasta = EXTRACT_FASTA.out.fasta.flatten()
-
-ch_convert = EXTRACT_FASTA.out.tsv
-ch_krakenuniq_map = EXTRACT_FASTA.out.krakenuniq_map
-
-ch_extracted_fasta = ch_fasta.map{
-    [it.baseName.split("_")[0], it.baseName.split('_')[1..2].join("_"), it.baseName.split("_")[3..-1].join("_"), it]
-    }
 // add the extra_genomes to the extracted_fasta
 WRITE_FASTA(
-    ch_extracted_fasta.mix(ch_genomes)
+    ch_for_writing
 )
 
 ch_raw_fasta = WRITE_FASTA.out.fasta
@@ -183,26 +193,14 @@ ch_acclist = RUN_DUSTMASKER.out.txt
 
 WRITE_BEDFILES(ch_acclist)
 
-
 //
-// 5. Make the kraken database and file-mappings
+// 6. Make the kraken database
 //
 
-
-// for kraken: we only need the fasta files
-ch_forkraken = ch_raw_fasta
-    .map{it[2]}
-    .toList()
+// for kraken: we only need the fasta files, the map goes in separately
+ch_forkraken = ch_genomes.map{it[0]}.collect()
 
 
-KRAKEN_BUILD(ch_database, ch_forkraken, ch_krakenuniq_map, ch_genomes_for_krakenuniq)
-
-//ch_taxonomy = KRAKEN_BUILD.out.taxonomy
-
-//PREPARE_TAXONOMY(ch_taxonomy)
-
-//ch_json = PREPARE_TAXONOMY.out.json
-
-//MAKE_FILEMAP( ch_convert, ch_json)
+KRAKEN_BUILD(ch_database, ch_forkraken, ch_genomes_maps_file)
 
 }

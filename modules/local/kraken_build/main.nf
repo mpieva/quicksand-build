@@ -8,9 +8,8 @@ process KRAKEN_BUILD{
 
     input:
         tuple path("Mito_db_kmer${kmer}"), val(kmer)
-        path("*.fasta")
+        path(fasta)
         path("krakenuniq.map")
-        path(extra_genomes)
 
     output:
         path("Mito_db_kmer${kmer}"), emit: database
@@ -18,16 +17,13 @@ process KRAKEN_BUILD{
 
     script:
         dbname = "Mito_db_kmer${kmer}"
-        extra_genomes_command = extra_genomes ? "cp ${extra_genomes}/* ${dbname}/library/" : ""
 
         """
         mkdir -p ${dbname}/library
         for fasta in *.fasta; do \
-            mv \${fasta} ${dbname}/library;\
+            cp \${fasta} ${dbname}/library;\
         done
         cp krakenuniq.map ${dbname}/library/
-
-        $extra_genomes_command
 
         krakenuniq-build --db ${dbname} --kmer $kmer --threads ${params.threads} --taxids-for-genomes
 

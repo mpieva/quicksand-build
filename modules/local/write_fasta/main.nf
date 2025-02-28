@@ -3,7 +3,7 @@ process WRITE_FASTA{
     tag "Writing $family:$species"
 
     input:
-        tuple val(family), val(accession), val(species), path("input.fasta")
+        tuple val(family), val(species), path("input.fasta")
 
     output:
         tuple val(family), val(species), path("${species}.fasta"), emit: fasta
