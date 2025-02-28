@@ -30,7 +30,8 @@ if (params.help || params.outdir == false ) {
 
 kmer = Channel.from(params.kmer)
 taxonomy = params.taxonomy ? Channel.fromPath("${params.taxonomy}", type:'dir', checkIfExists:true) : []
-
+ch_genomes = params.genomes ? Channel.fromPath("${params.genomes}", type:'dir', checkIfExists:true) : []
+    
 //
 //
 // The Pipeline
@@ -137,7 +138,9 @@ ch_forkraken = ch_raw_fasta
     .map{it[2]}
     .toList()
 
-KRAKEN_BUILD(ch_database, ch_forkraken, ch_taxidmap)
+//mix in the 
+
+KRAKEN_BUILD(ch_database, ch_forkraken, ch_taxidmap, ch_genomes)
 
 //ch_taxonomy = KRAKEN_BUILD.out.taxonomy
 

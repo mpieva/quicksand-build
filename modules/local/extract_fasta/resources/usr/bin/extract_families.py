@@ -90,3 +90,4 @@ for arg in sys.argv[5:]:
                 continue
 
 acc_map_handle.close()
+krakenuniq_map.close()

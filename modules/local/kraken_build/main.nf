@@ -10,23 +10,28 @@ process KRAKEN_BUILD{
         tuple path("Mito_db_kmer${kmer}"), val(kmer)
         path("*.fasta")
         path("krakenuniq.map")
+        path(extra_genomes)
 
     output:
         path("Mito_db_kmer${kmer}"), emit: database
         //tuple path("seqid2taxid.map"), path("${dbname}/taxonomy/names.dmp"), val(kmer), emit: taxonomy
-        //--taxids-for-genomes cant be used as it breaks backwarts-compability with quicksand
 
     script:
         dbname = "Mito_db_kmer${kmer}"
+        extra_genomes_command = extra_genomes ? "cp ${extra_genomes}/* ${dbname}/library/" : ""
+
         """
-        mkdir ${dbname}/library
+        mkdir -p ${dbname}/library
         for fasta in *.fasta; do \
             mv \${fasta} ${dbname}/library;\
         done
         cp krakenuniq.map ${dbname}/library/
-        krakenuniq-build --db ${dbname} --kmer $kmer --threads ${params.threads}
 
-        cut ${dbname}/seqid2taxid.map -f 1,2 > seqid2taxid_correct.map
+        $extra_genomes_command
+
+        krakenuniq-build --db ${dbname} --kmer $kmer --threads ${params.threads} --taxids-for-genomes
+
+        cut ${dbname}/seqid2taxid.map.orig -f 1,2 > seqid2taxid_correct.map
         mv seqid2taxid_correct.map ${dbname}/seqid2taxid.map
         """
 }
