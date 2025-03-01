@@ -11,7 +11,7 @@ process KRAKEN_TAXONOMY{
 
     output:
         tuple path("Mito_db_kmer${kmer}"), val(kmer), emit: database
-        tuple path("${dbname}/taxonomy/names.dmp"), path("${dbname}/taxonomy/nodes.dmp"), emit: nodes
+        tuple path("${dbname}/taxonomy/names.dmp"), path("${dbname}/taxonomy/nodes.dmp"), emit: taxonomy
 
     script:
         dbname = "Mito_db_kmer${kmer}"
