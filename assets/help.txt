@@ -8,7 +8,7 @@ The pipeline creates 4 folders:
     1. ncbi:     raw Downloaded files from NCBI
     2. genomes:  Fasta files grouped by Family
     3. masked:   For all fasta files in 'genomes' a bed file created by dustmasker
-    4. kraken:   For the given kmers the corresponding kraken databases
+    4. kraken:   For the given kmers the corresponding kraken database
 
 USAGE:
 
@@ -21,11 +21,22 @@ parameters:
     --kmer    N:      Which kmer-size to use
                       default: 22
 
-    --exclude STRING: A string of comma-separated taxa names
-                      to be excluded from the kraken-database. Must correspond to the NCBI taxonomy
+    --exclude STRING: A string of comma-separated taxa names to filter the RefSeq download.
+                      Exclude from the kraken-database. Must correspond to a node in the NCBI taxonomy
                       example: 'Arthropoda,Pan,Gorilla'
 
-    --include STRING: A string of comma-separated taxa names
-                      to be included in the kraken-database. Must correspond to the NCBI taxonomy
+    --include STRING: A string of comma-separated taxa names to filter the RefSeq download.
+                      Include in the kraken-database. Must correspond to a node in the NCBI taxonomy
                       example: 'Mammalia, Daphnia'
                       default: 'root' (everything)
+    
+    --genomes  PATH   A folder with custom genomes files for database inclusion.
+                      Folder must contain a `.fasta` and `.map` file
+    
+    --taxonomy PATH   A folder with custom taxonomy files for the KrakenUniq database.
+                      Folder must contain a `names.dmp` and `nodes.dmp` file
+                      Skips the download of the taxonomy in the pipeline
+    
+    --gbff    PATH    A folder with downloaded gzipped NCBI RefSeq GBFF file(s)
+                      (e.g. a quicksand-build `ncbi` folder)
+                      Skips the download of the NCBI RefSeq gbff files.
