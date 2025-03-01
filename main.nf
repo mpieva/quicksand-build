@@ -142,8 +142,10 @@ ch_taxonomy_json.map{ json ->
 ch_genomes_fasta = ch_extra_genomes.fasta.splitFasta(record: [id: true, seqString: true]).map{[it.id, it]}
 
 // collect the fasta by taxID --> all extra genomes of e.g. Homo_sapiens go into 1 fasta file
-ch_genomes_fasta_files = ch_genomes_fasta.collectFile(newLine:true){ it -> ["${it[0]}.fasta", ">${it[0]}\n${it[1].seqString}"] }
-    .map{file -> [file.baseName, file]} //[accession, file]
+ch_genomes_fasta_files = ch_genomes_fasta.collectFile(
+        newLine:true
+    ){ it -> ["${it[0]}.fasta", ">${it[0]}\n${it[1].seqString}"] }
+        .map{file -> [file.baseName, file]} //[accession, file]
 
 //bring merge them together to add the taxID
 ch_genomes_fasta_files = ch_genomes_fasta_files.combine(ch_krakenuniq_map, by:0).map{
@@ -161,12 +163,12 @@ ch_extracted_fasta = ch_extracted_fasta.combine(json).map{id,taxid,fasta,json ->
 //if we only download from RefSeq, that results in the same files, since its a non-redundant database
 //but extra-genomes (e.g. 5 different neanderthals) would otherwise overwrite each other later 
 
-ch_fasta_for_cat = ch_extracted_fasta.groupTuple(by:2).map{it -> [it[1], it[2], it[3].first()]}
+ch_fasta_for_cat = ch_extracted_fasta
+    .groupTuple(by:2).map{it -> [it[1], it[2], it[3].first()]}
 
 CONCAT_FASTA(ch_fasta_for_cat)
 
 ch_genomes = CONCAT_FASTA.out.fasta
-
 
 ch_for_writing = ch_genomes.map{
     [
