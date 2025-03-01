@@ -81,7 +81,6 @@ ${cyan}Version ${workflow.manifest.version} ${white}
 
 KRAKEN_TAXONOMY( kmer, ch_taxonomy )
 
-ch_database = KRAKEN_TAXONOMY.out.database
 ch_nodes = KRAKEN_TAXONOMY.out.taxonomy
 
 //
@@ -208,6 +207,6 @@ WRITE_BEDFILES(ch_acclist)
 ch_forkraken = ch_raw_fasta.map{it[2]}.collect()
 
 
-KRAKEN_BUILD(ch_database, ch_forkraken, ch_genomes_maps_file, ch_nodes_for_parsetaxonomy)
+KRAKEN_BUILD( kmer, ch_forkraken, ch_genomes_maps_file, ch_nodes_for_parsetaxonomy)
 
 }

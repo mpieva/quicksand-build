@@ -7,14 +7,13 @@ process KRAKEN_BUILD{
     beforeScript 'ulimit -Ss unlimited'
 
     input:
-        tuple path("Mito_db_kmer${kmer}"), val(kmer)
+        val(kmer)
         path(fasta)
         path("krakenuniq.map")
         tuple path(names), path(nodes)
 
     output:
         path("Mito_db_kmer${kmer}"), emit: database
-        //tuple path("seqid2taxid.map"), path("${dbname}/taxonomy/names.dmp"), val(kmer), emit: taxonomy
 
     script:
         dbname = "Mito_db_kmer${kmer}"
