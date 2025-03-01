@@ -11,41 +11,43 @@
 - [Quickstart](#quickstart)
 - [Parameters](#parameters)
 - [quicksand](#quicksand)
+- [Customization](#customization)
+     - [Add custom reference genomes to the database](#add-custom-reference-genomes-to-the-database)
+     - [Update the NCBI Taxonomy](#update-the-ncbi-taxonomy)
 <!-- /TOC -->
 
-The quicksand-build pipeline is a helper-pipeline that supplements [quicksand](https://www.github.com/mpieva/quicksand). It is used to download a set of mtDNA reference-genomes from NCBI RefSeq, index a KrakenUniq database and create bed-files that are stored in the format that is required by quicksand.
+quicksand-build is a helper-pipeline that supplements [quicksand](https://www.github.com/mpieva/quicksand). It is used to download a set of mtDNA reference-genomes from NCBI RefSeq, index a KrakenUniq database and create bed-files that are stored in the format that is required by quicksand.
 
 Make sure to check the [RefSeq Website](https://www.ncbi.nlm.nih.gov/refseq/) and note down the current RefSeq Release that is used for your database
 
 **The output** of the pipeline is structured as followes
 ```
-    ncbi: 
+     ncbi: 
          mitochondrion.{n}.genomic.gbff.gz - raw downloaded files from NCBI
-    genomes: 
-         genomes/{family}/{species}.fasta - The indexed mitochondrial genomes used for mapping with bwa
-         genomes/taxid_map.tsv - A table with all nodes in the database (for backwards compability)
+     genomes: 
+         genomes/{family}/{species}.fasta - The mtDNA reference genomes that are part of the database
      masked:
-         masked/{species}.masked.bed - Bed files for all species in the database showing low-complexity regions
-    kraken:
-         kraken/Mito_db_kmer{kmersize} - A preindexed Kraken-database for the given kmers containing all the species in the database
-    work: contains nextflow-specific files and can be deleted after the run
+         masked/{species}.masked.bed - bed files for the mtDNA reference genomes in the database masking low-complexity regions
+     kraken:
+         kraken/Mito_db_kmer{kmersize} - A preindexed KrakenUniq database containing all the mtDNA reference genomes in the database
+     work: contains nextflow-specific files and can be deleted after the run
 ```
 
 ## Requirements
 To run the pipeline the following programms need to be installed:
-1. Nextflow (tested on v.20.04.10): [Installation](https://www.nextflow.io/docs/latest/getstarted.html)
-2. Singularity (tested on v3.7.1): [Installation](https://sylabs.io/guides/3.0/user-guide/installation.html) or Docker
+1. Nextflow >= v22.10: [Installation](https://www.nextflow.io/docs/latest/getstarted.html)
+2. Singularity (v3.7.1): [Installation](https://sylabs.io/guides/3.0/user-guide/installation.html) or Docker
 
 
-## Quickstart
+## quickstart
 
-To run the pipeline with default parameters open the terminal and type
+To create a minimal database run
 
 ``` 
-nextflow run mpieva/quicksand-build -profile singularity
+nextflow run mpieva/quicksand-build -profile singularity --include Hominidae
 ```
 
-This will construct the kraken-database for kmer 22 from all mitochondrial genomes in the current refseq-release \
+This will download all mtDNA genomes that are part of the Hominidae family from NCBI RefSeq and construct a KrakenUniq database with a kmer-size of 22. The genomes and bedfiles are then structured in the file-system for the use with quicksand as indicated above 
 
 ## Parameters
 
@@ -53,12 +55,13 @@ The pipeline accepts the following parameters:
 
 ```    
   Pipeline ARGS
-       --outdir  PATH    : Directory to save the output in. Default = "out"
-       --kmers   KMERS   : Kmer-size to be used for the kraken database are created (e.g. 23). Default=22
-       --include STRING  : comma-separated string of Taxa that should be in the DB, e.g. "Mammalia". Default='root'
-       --exclude STRING  : comma-separated string of Taxa that mustn't be in the DB, e.g. "Pan,Gorilla".
-       --genomes PATH    : A folder to provide extra genomes for the kraken-database // not implemented yet
-       --taxonomy PATH   : A folder containing a custom NCBI style `names.dmp` and `nodes.dmp` files
+       --outdir   PATH    : Directory to save the output in. (Default = "out")
+       --kmer     KMER    : The kmer-size to be used for the kraken database are created. (Default=22)
+       --include  STRING  : comma-separated string of taxa to be downloaded from NCBI RefSeq. e.g. "Mammalia". (Default='root')
+       --exclude  STRING  : comma-separated string of taxa to exclude from the DB, e.g. "Pan,Gorilla".
+       --genomes  PATH    : A folder with extra genomes to be included in the database construction (see below)
+       --taxonomy PATH    : A folder containing custom NCBI style `names.dmp` and `nodes.dmp` files. If provided, skip download of taxonomy from NCBI
+       --gbff     PATH    : A folder containing gbff.gz files. If provided, skip download of RefSeq from NCBI
 
   Nextflow ARGS (only one dash!)
        -profile  PROFILE : Run the pipeline with the assigned profile (see profiles below)
@@ -75,26 +78,76 @@ To integrate the created datastructure, run the quicksand pipeline with the foll
     --db <OUTDIR>/kraken/Mito_db_kmer<KMER>/
 ```
 
-## Customization
+## Customize
 
-quicksand-build has some options to customize the databases.
+quicksand-build provides options to customize the database.
 
-### Add custom reference genomes to the database
+### Custom reference genomes
 
-- 1 fasta file that contains the references to be added
-- 1 `map` file that has 3 columns and specifies the node in the mtDNA NCBI taxonomy
-- provide the folder with the `--genomes` flag
-- The extra genomes are included in the kraken-classification
+We provide the option to add custom genomes to the quicksand-build run with the `--genomes` flag. These genomes are added to the KrakenUniq database and renamed to fit the requirements of quicksand.
 
-Warning: Please provide only **1 genome per taxID**! If multiple genomes are added for a single TaxID, quickand-build will put them **together in the same fasta-file**. While this works for the KrakenUniq classification, quicksand will remove reads mapping to multiple genomes in the same fasta-file due to the low mapping-quality!  
+The `--genomes` flag should point to a single directory containing a **single** `.fasta` and a **single** `.map` file (the file-names dont matter)
 
-If you want to include multiple genomes from the same species, please add a custom NCBI taxonomy and add additional nodes for each genome
+```
+genomes/
+├── genomes.fasta
+└── genomes.map
+```
 
-### Update the NCBI Taxonomy
+The fasta file should contain all the extra genomes as individual records.
 
-To use more than one genome per species, update the taxonomy to reflect that in the nodes
+```
+genomes.fasta
 
-1. download the `names.dmp` and `nodes.dmp` files from NCBI
-2. Update the files (see here: https://github.com/DerrickWood/kraken2/issues/436)
-3. Provide a folder containing these files with the `--taxonomy` flag
+>MyCustomGenome_1
+ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+>MyCustomGenome_2
+ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+```
 
+The map-file is a tab-separated table with three columns and no header. It links the unique identifiers in the fasta file (1st column) to a (sub)species (2nd column) by its NCBI Taxonomy TaxID (see https://www.ncbi.nlm.nih.gov/taxonomy to find the organism to your custom genomes). The 3rd column is a custom name, but in quicksand-build we reuse the identifiers again.  
+
+```
+genomes.map
+
+MyCustomGenome_1    9606 MyCustomGenome_1
+MyCustomGenome_2    9606 MyCustomGenome_2
+```
+
+**What happens in quicksand-build?**
+
+quicksand is designed to run with only one genome per species. To allow *multiple* custom reference genomes for a single species, quicksand-build mints fake TaxIDs and manipulates the NCBI taxonomy by adding the custom genomes as subspecies of the original species.
+
+```
+quicksand-build taxonomy without --genomes
+
+9604 family Hominidae
+└── 9605 genus Homo
+     └── 9606 species Homo sapiens
+
+quicksand-build taxonomy with --genomes
+
+9604 family Hominidae
+└── 9605 genus Homo
+     └── 9606 species Homo sapiens
+          ├── 3111583 subspecies MyCustomGenome_1
+          └── 3111584 subspecies MyCustomGenome_2
+
+```
+
+### Update the NCBI taxonomy
+
+Independent of the custom genomes, we also provide the option to use a custom version of the NCBI taxonomy in quicksand-build, with the `--taxonomy` flag. If this flag is used, the taxonomy is not downloaded from NCBI
+
+The `--taxonomy` flag should point to a single directory containing a `names.dmp` and a `nodes.dmp` file, as can be downloaded from [NCBI](https://ftp.ncbi.nih.gov/pub/taxonomy/)
+
+```
+taxonomy/
+├── names.dmp
+└── nodes.dmp
+```
+Please be aware that also the custom taxonomy is updated with additional subspecies nodes if used in combination with the `--genomes` flag 
