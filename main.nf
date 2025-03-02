@@ -176,8 +176,8 @@ ch_extracted_fasta = ch_extracted_fasta.combine(json).map{id,taxid,fasta,marker,
 ch_for_writing = ch_extracted_fasta.map{
     def species_name = it[4].extracted ? it[3].subspecies ?: it[3].species : it[0]
     [
-        it[3].family,
-        species_name,
+        it[3].family ?: "Unclassified",   // species without family entry cannot be handled by quicksand (downstream of krakenuniq). This is a few microbes that would need a custom taxonomy
+        species_name.replaceAll("/","_"), // this is important for file names
         it[1]
     ]
 }
