@@ -43,7 +43,7 @@ for arg in sys.argv[3:]:
             ):  # [Candida], (In: Bacteria) --> unclear taxonomy, abort
                 continue
             # extract the taxonomy-ID from the genebank entry
-            taxid = seq_gb.features[0].qualifiers['db_xref'][0].split(":")[1]
+            taxid = [x for x in seq_gb.features[0].qualifiers["db_xref"] if x.startswith("taxon")][0].split(":")[1]
             acc = seq_gb.id
             
             filename = f"{taxid}__{acc}.fasta"
