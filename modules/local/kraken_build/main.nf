@@ -8,7 +8,7 @@ process KRAKEN_BUILD{
 
     input:
         val(kmer)
-        path(fasta)
+        path("*.fasta")
         path("krakenuniq.map")
         tuple path(names), path(nodes)
 
