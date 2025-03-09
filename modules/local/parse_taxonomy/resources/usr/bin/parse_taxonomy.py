@@ -38,8 +38,14 @@ def get_nodes_dict(taxonomy_file):
     return taxonomy_dict
 
 def traverse_tree(taxid, nodes):
+    # this returns just a list of taxids, from the leaves to the root
     results = [taxid]
-    record = nodes[taxid]
+    try:
+        record = nodes[taxid]
+    except KeyError: 
+        #this happens if the NCBI gbff dbxref[taxon] tag doesnt match the NCBI taxonomy (it happens!)
+        # return an empty list and report the missing ID downstream
+        return []
     if "parent" in record:
         if record["parent"] != taxid:
             results.extend( traverse_tree(record["parent"], nodes) )
@@ -61,7 +67,13 @@ if __name__ == '__main__':
 
     final_json = {}
     for taxid in taxids:
-        tmp = {nodes[x]['rank'] : names[x].replace(' ','_') for x in traverse_tree(taxid, nodes)}
+        taxonomy = traverse_tree(taxid, nodes)
+        
+        # early return from traverse_tree due to NCBI error?
+        if taxonomy == []:
+            continue
+        
+        tmp = {nodes[x]['rank'] : names[x].replace(' ','_') for x in taxonomy}
         # {taxid:{ 'species':'Homo_sapiens', 'family':'Hominidae' }}
         if len(tmp)>0:
             final_json[taxid] = tmp

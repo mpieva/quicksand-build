@@ -166,14 +166,39 @@ ch_genomes_fasta_files = ch_genomes_fasta_files.combine(ch_krakenuniq_map, by:0)
 //combine with the extracted fasta
 ch_extracted_fasta = ch_extracted_fasta.mix(ch_genomes_fasta_files).unique{it[0]}
 
-//and get the taxonomy from the json
-ch_extracted_fasta = ch_extracted_fasta.combine(json).map{id,taxid,fasta,marker,json -> [id,fasta,taxid,json[taxid],marker]}
+// and get the taxonomy from the json
+// check if the taxonomy exists! 
+ch_extracted_fasta = ch_extracted_fasta.combine(json)
+    .branch{ id,taxid,fasta,marker,json -> 
+        valid_taxid: json.containsKey(taxid)
+        invalid_taxid: !json.containsKey(taxid)
+    }
+
+ch_extracted_fasta_valid = ch_extracted_fasta.valid_taxid.map{
+    id,taxid,fasta,marker,json ->
+        [
+            id,
+            fasta,
+            taxid,
+            json[taxid],
+            marker
+        ]
+}
+
+ch_extracted_fasta.invalid_taxid.collectFile( 
+    name:"FilesWithWrongTaxonomy.tsv", 
+    newLine:true, 
+    seed:["ID","TaxID","FileName"].join("\t"),
+    storeDir: params.outdir
+){ 
+    [it[0], it[1], it[2].baseName].join("\t") 
+}
 
 // In the updated nodes and names.dmp, a taxonomy can now have multiple subspecies (e.g. Denisova2 (sub) --> Denisova (sub) --> Homo sapiens (sp))
 // they overwrite each other! 
 // So if the genome was extracted, use the species name from NCBI, if provided, use the accession ID as species name  
 
-ch_for_writing = ch_extracted_fasta.map{
+ch_for_writing = ch_extracted_fasta_valid.map{
     def species_name = it[4].extracted ? it[3].subspecies ?: it[3].species : it[0]
     [
         it[3].family ?: "Unclassified",   // species without family entry cannot be handled by quicksand (downstream of krakenuniq). This is a few microbes that would need a custom taxonomy
