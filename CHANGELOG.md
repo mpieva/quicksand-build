@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres (a bit) to [Semantic Versioning](http://semver.org/).
 
+## [latest]
+
+### updates
+
+- fix support for the docker profile
+
 ## v3.0
 
 This is a major update of the quicksand-build pipeline, as the structure created here can **no longer be used with quicksand v1.x**. Compatibility with quicksand versions **v2.x** is still given.
