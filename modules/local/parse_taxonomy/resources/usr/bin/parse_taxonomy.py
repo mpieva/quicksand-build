@@ -73,7 +73,7 @@ if __name__ == '__main__':
         if taxonomy == []:
             continue
         
-        tmp = {nodes[x]['rank'] : names[x].replace(' ','_').replace('[','').replace(']','') for x in taxonomy}
+        tmp = {nodes[x]['rank'] : names[x].replace(' ','_').replace('/','_') for x in taxonomy}
         # {taxid:{ 'species':'Homo_sapiens', 'family':'Hominidae' }}
         if len(tmp)>0:
             final_json[taxid] = tmp
