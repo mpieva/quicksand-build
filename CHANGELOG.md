@@ -5,11 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres (a bit) to [Semantic Versioning](http://semver.org/).
 
-## [latest]
+## v3.1
 
-### updates
+This version fixes bugs that occured when running the docker profile and when trying to build the full refseq 231 release
+
+### Bugfixes
 
 - fix support for the docker profile
+- handle species names with special characters
 
 ## v3.0
 
