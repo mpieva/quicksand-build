@@ -7,7 +7,7 @@ process INDEX_FASTA{
         tuple val(family), val(species), path("${species}.fasta")
 
     output:
-        path("${species}.fasta.*")
+        path("*.fasta.*")
 
     script:
         """

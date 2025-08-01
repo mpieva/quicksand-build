@@ -9,7 +9,7 @@ process WRITE_BEDFILES{
         tuple val(family), val(species), path("acclist.txt")
 
     output:
-        path("${species}.masked.bed"), emit: bed
+        path("*.masked.bed"), emit: bed
 
     script:
         """

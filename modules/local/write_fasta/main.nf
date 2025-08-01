@@ -6,7 +6,7 @@ process WRITE_FASTA{
         tuple val(family), val(species), path("input.fasta")
 
     output:
-        tuple val(family), val(species), path("${species}.fasta"), emit: fasta
+        tuple val(family), val(species), path("*.fasta"), emit: fasta
 
     script:
         """
