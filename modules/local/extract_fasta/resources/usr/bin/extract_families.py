@@ -7,9 +7,8 @@ from collections import defaultdict
 import gzip
 import sys
 
-# give information about the groups that you want to have included (e.g. Mammalia)
-# import a list of all orders in Refseq, as they are not annotated in the gb-file
-# provide a list of species to exclude
+# include can be Taxa (e.g. 'Mammalia') based on the taxonomy string
+# include can be Accession IDs
 
 include = (
     set([x.strip() for x in sys.argv[1].split(",")])
@@ -17,9 +16,11 @@ include = (
     else "root"
 )
 
+# exclude can be Taxa (e.g. 'Mammalia') based on the taxonomy string
+# exclude can be Accession IDs
+
 exclude_string = sys.argv[2]
 
-# make a list of taxa that should be excluded from the database
 exclude = (
     set([x for x in exclude_string.split(",")]) if exclude_string != "None" else set([])
 )
@@ -30,12 +31,20 @@ for arg in sys.argv[3:]:
     with gzip.open(arg, "rt") as gb:
         for seq_gb in SeqIO.parse(gb, "genbank"):
             tax = set(seq_gb.annotations["taxonomy"])
+            accession = seq_gb.annotations["accessions"][0]
 
-            # check the include parameter 
+            # check the include parameter for taxonomy, skip if _not_ included
             if include != "root" and len(include.intersection(tax)) == 0:
-                continue
+                #Now check the accession
+                #the accession could be entered with a version, but we strip the version 
+                # e.g. ["Mammalia", "NC_023100.1", "Gorilla", "Pan"] --> yes, if accession is "NC_023100"
+                if not any(x.split('.')[0] == accession for x in include):
+                    continue
             # check exclude and skip entry if excluded
             if len(exclude.intersection(tax)) > 0:
+                continue
+            # passes the taxonomy-exclude, but check for accession-exclude
+            if any(x.split('.')[0] == accession for x in exclude):
                 continue
             organism = seq_gb.annotations["organism"].replace(" ", "_").replace("/", "_")
             if any(

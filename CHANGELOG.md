@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres (a bit) to [Semantic Versioning](http://semver.org/).
 
+## v3.2
+
+### Changes
+- Allow the use of NCBI Accession IDs to be included in the --include and --exclude strings
+
 ## v3.1
 
 This version fixes bugs that occured when running the docker profile and when trying to build the full refseq 231 release

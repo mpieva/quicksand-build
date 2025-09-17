@@ -57,8 +57,8 @@ The pipeline accepts the following parameters:
   Pipeline ARGS
        --outdir   PATH    : Directory to save the output in. (Default = "out")
        --kmer     KMER    : The kmer-size to be used for the kraken database are created. (Default=22)
-       --include  STRING  : comma-separated string of taxa to be downloaded from NCBI RefSeq. e.g. "Mammalia". (Default='root')
-       --exclude  STRING  : comma-separated string of taxa to exclude from the DB, e.g. "Pan,Gorilla".
+       --include  STRING  : comma-separated string of taxa (or NCBI accession IDs) to be downloaded from NCBI RefSeq. e.g. "Mammalia". (Default='root')
+       --exclude  STRING  : comma-separated string of taxa (or NCBI accession IDs) to exclude from the DB, e.g. "Pan,Gorilla".
        --genomes  PATH    : A folder with extra genomes to be included in the database construction (see below)
        --taxonomy PATH    : A folder containing custom NCBI style `names.dmp` and `nodes.dmp` files. If provided, skip download of taxonomy from NCBI
        --gbff     PATH    : A folder containing gbff.gz files. If provided, skip download of RefSeq from NCBI
